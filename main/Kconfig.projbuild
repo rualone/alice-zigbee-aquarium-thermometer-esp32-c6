@@ -1,34 +1,34 @@
 menu "Alice Zigbee Aquarium Thermometer"
     config AQUARIUM_DATA_GPIO
-        int "DS18B20 data GPIO"
+        int "GPIO данных DS18B20"
         range 0 30
         default 4
     config AQUARIUM_LED_ENABLED
-        bool "Enable conventional status LED"
+        bool "Включить обычный светодиод состояния"
         default y
     config AQUARIUM_LED_GPIO
-        int "Status LED GPIO (not addressable RGB)"
+        int "GPIO обычного светодиода (не адресного RGB)"
         range 0 30
         default 15
         depends on AQUARIUM_LED_ENABLED
     config AQUARIUM_LED_ACTIVE_LOW
-        bool "LED is active low"
+        bool "Светодиод с активным низким уровнем"
         default y
         depends on AQUARIUM_LED_ENABLED
     config AQUARIUM_BOOT_GPIO
-        int "Pairing reset button GPIO (active low)"
+        int "GPIO кнопки сброса привязки (активный низкий уровень)"
         range 0 30
         default 9
     config AQUARIUM_SAMPLE_SECONDS
-        int "Pause between measurements (seconds)"
+        int "Пауза между измерениями (секунды)"
         range 2 3600
         default 5
     config AQUARIUM_REPORT_SECONDS
-        int "Periodic report interval (seconds)"
+        int "Период отправки показаний (секунды)"
         range 5 3600
         default 60
     config AQUARIUM_DELTA_CENTI
-        int "Report change threshold (hundredths of a degree C)"
+        int "Порог изменения для отправки (сотые доли градуса C)"
         range 1 1000
         default 20
 endmenu

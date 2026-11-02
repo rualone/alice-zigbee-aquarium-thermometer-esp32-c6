@@ -1,4 +1,4 @@
-name: ESP-IDF build
+name: Сборка ESP-IDF
 on:
   push:
   pull_request:
@@ -11,7 +11,7 @@ jobs:
     container: espressif/idf:v6.1
     steps:
       - uses: actions/checkout@v4
-      - name: Build ESP32-C6
+      - name: Сборка для ESP32-C6
         shell: bash
         run: |
           . "$IDF_PATH/export.sh"

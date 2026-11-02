@@ -1,9 +1,11 @@
-# Security
+# Безопасность
 
-Не публикуйте сетевые ключи, дампы flash/NVS и токены в issues.
-Для чувствительной проблемы используйте приватный канал владельца репозитория
-или GitHub Private Vulnerability Reporting, если он включён.
+Не публикуйте сетевые ключи, дампы flash/NVS и токены в issues и журналах.
+Перед отправкой диагностических данных удалите личные и сетевые идентификаторы.
 
-> Do not publish network keys, flash/NVS dumps, or tokens in issues.
-> Use the repository owner's private contact or GitHub Private Vulnerability
-> Reporting when enabled for sensitive reports.
+О чувствительной уязвимости сообщите через GitHub Private Vulnerability Reporting,
+если этот канал включён владельцем. Иначе используйте приватный контакт владельца,
+указанный в его профиле. Не раскрывайте детали публично до согласования.
+
+Устройство предназначено для наблюдения за температурой. Оно не заменяет
+штатный термостат нагревателя; управление нагревателем не реализовано.

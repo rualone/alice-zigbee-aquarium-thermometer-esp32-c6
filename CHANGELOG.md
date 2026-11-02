@@ -1,10 +1,12 @@
-# Alice Zigbee Aquarium Thermometer — Changelog
+# История изменений
 
-## 0.1.0 — unreleased
+## 0.1.0 — готовится к выпуску
 
-- ESP32-C6 / ESP-IDF Zigbee water temperature sensor.
-- Single DS18B20 on GPIO4, CRC validation and bus recovery.
-- Temperature change and periodic reports; invalid-measurement reporting.
-- Configurable GPIOs, LED polarity, sampling and reporting via menuconfig.
-- BOOT pairing reset on release after five seconds.
-- Bilingual documentation and reproducible dependency lock.
+- Термометр на ESP32-C6 и ESP-IDF с прямым Zigbee-подключением к Алисе.
+- Один DS18B20 на GPIO4: проверка контрольной суммы и восстановление шины.
+- Отправка температуры по изменению и по таймеру, признак ошибки измерения.
+- Настройки GPIO, светодиода, измерений и отправки через menuconfig.
+- Сброс привязки при отпускании BOOT после удержания пять секунд.
+- Русская документация, закреплённые версии зависимостей и проверка сборки.
+
+Полный список проверок на оборудовании: [docs/VALIDATION.md](docs/VALIDATION.md).
