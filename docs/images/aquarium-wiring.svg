@@ -2,7 +2,7 @@
 <rect width="1600" height="1600" fill="white"/>
 <g fill="none" stroke="#222" stroke-width="2"><rect x="30" y="30" width="1540" height="940"/><path d="M30 810H1570M30 900H1570M1070 900V970"/></g>
 <g font-family="Arial, sans-serif" fill="#222">
-<text x="80" y="100" font-size="30" font-weight="bold">AQUARIUM SENSOR</text><text x="80" y="137" font-size="20">Подключение щупа / Probe interface</text>
+<text x="80" y="100" font-size="26" font-weight="bold">ALICE ZIGBEE AQUARIUM THERMOMETER</text><text x="80" y="137" font-size="20">Подключение щупа / Probe interface</text>
 <text x="140" y="265" font-size="24" font-weight="bold">U1</text><text x="140" y="296" font-size="22">ESP32-C6 SuperMini</text>
 <text x="1290" y="285" font-size="24" font-weight="bold">B1</text><text x="1290" y="315" font-size="22">DS18B20</text>
 </g>

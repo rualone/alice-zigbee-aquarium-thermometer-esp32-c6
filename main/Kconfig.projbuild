@@ -1,4 +1,4 @@
-menu "Aquarium Sensor"
+menu "Alice Zigbee Aquarium Thermometer"
     config AQUARIUM_DATA_GPIO
         int "DS18B20 data GPIO"
         range 0 30

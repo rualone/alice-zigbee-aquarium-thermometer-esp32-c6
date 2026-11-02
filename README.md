@@ -1,6 +1,6 @@
-# Aquarium Sensor
+# alice-zigbee-aquarium-thermometer
 
-**ESP32-C6 · DS18B20 · Zigbee · ESP-IDF 6.1**
+**Алиса / Alice · Zigbee · ESP32-C6 · DS18B20 · ESP-IDF 6.1**
 
 [Схема / Wiring](#подключение--wiring) · [Сборка / Build](#сборка-и-прошивка--build-and-flash) · [Проверки / Validation](docs/VALIDATION.md) · [Участие / Contributing](CONTRIBUTING.md)
 
@@ -9,6 +9,41 @@
 Датчик температуры воды на ESP32-C6 SuperMini и DS18B20 с прямым Zigbee-подключением к Яндекс Станции Миди. Работа устройства подтверждена владельцем сборки. Wi-Fi, MQTT и отдельный сервер не требуются.
 
 > Water temperature sensor based on ESP32-C6 SuperMini and DS18B20, connecting directly to Yandex Station Midi over Zigbee. Operation has been confirmed by the build owner. Wi-Fi, MQTT, and a separate server are not required.
+
+## Термометр для Алисы / Thermometer for Alice
+
+Проект превращает ESP32-C6 и водяной щуп DS18B20 в Zigbee-термометр для
+«Дома с Алисой». Станция Миди выступает хабом: показания поступают в умный дом
+через прямое Zigbee-подключение, без Tuya, MQTT и Home Assistant.
+
+> This project turns an ESP32-C6 and a DS18B20 water probe into a Zigbee
+> thermometer for Home with Alice. Station Midi acts as the hub: measurements
+> enter the smart home over a direct Zigbee connection, without Tuya, MQTT,
+> or Home Assistant.
+
+```text
+DS18B20 → ESP32-C6 → Zigbee → Яндекс Станция Миди → Дом с Алисой
+DS18B20 → ESP32-C6 → Zigbee → Yandex Station Midi → Home with Alice
+```
+
+Назовите датчик «Аквариум» и назначьте ему комнату. После появления реальных
+показаний проверьте голосовой запрос, например «Алиса, какая температура
+в аквариуме?». Распознавание конкретной фразы зависит от имени и комнаты;
+наличие датчика в приложении проверяется отдельно от голосового ответа.
+Для голосовых функций Алисы может требоваться интернет.
+
+> Name the sensor “Aquarium” and assign a room. Once live readings appear,
+> try asking Alice for the aquarium temperature. Phrase recognition depends
+> on the device name and room; verify app readings separately from voice
+> responses. Alice voice features may require internet access.
+
+Подключение и работа подтверждены владельцем со Станцией Миди. Это независимый
+DIY-проект, не официальное устройство Яндекса и не сертификация «Работает с Алисой».
+Другие Zigbee-хабы Яндекса пока не проверены.
+
+> Pairing and operation with Station Midi were confirmed by the owner.
+> This is an independent DIY project, not an official Yandex device or a
+> “Works with Alice” certification. Other Yandex Zigbee hubs are not yet tested.
 
 ## Компоненты / Components
 
@@ -37,9 +72,9 @@ GND  --------------------- GND
 
 ## Сборка и прошивка / Build and flash
 
-Проект использует ESP-IDF, а не Arduino IDE. Сборка проверена с ESP-IDF 6.1 и ESP Zigbee SDK 2.0.5. Установите ESP-IDF и расширение Espressif для VS Code, откройте корень проекта и активируйте окружение ESP-IDF. Зависимости загружаются менеджером компонентов; при первой сборке нужен интернет.
+Проект использует ESP-IDF, а не Arduino IDE. Сборка проверена с ESP-IDF 6.1 и ESP Zigbee SDK 2.0.5. Имя собираемого приложения — `alice_zigbee_aquarium_thermometer`. Установите ESP-IDF и расширение Espressif для VS Code, откройте корень проекта и активируйте окружение ESP-IDF. Зависимости загружаются менеджером компонентов; при первой сборке нужен интернет.
 
-> This is an ESP-IDF project, not an Arduino IDE sketch. The build has been verified with ESP-IDF 6.1 and ESP Zigbee SDK 2.0.5. Install ESP-IDF and the Espressif VS Code extension, open the project root, and activate the ESP-IDF environment. The component manager downloads dependencies; the first build requires internet access.
+> This is an ESP-IDF project, not an Arduino IDE sketch. The build has been verified with ESP-IDF 6.1 and ESP Zigbee SDK 2.0.5. The built application is named `alice_zigbee_aquarium_thermometer`. Install ESP-IDF and the Espressif VS Code extension, open the project root, and activate the ESP-IDF environment. The component manager downloads dependencies; the first build requires internet access.
 
 Выберите ESP32-C6 и соберите проект. Команда set-target предназначена для первоначальной настройки; она пересоздаёт конфигурацию сборки.
 
@@ -96,14 +131,14 @@ idf.py -p PORT flash monitor
 
 ## Настройки / Configuration
 
-Выполните `idf.py menuconfig` → **Aquarium Sensor**. Доступны GPIO щупа,
+Выполните `idf.py menuconfig` → **Alice Zigbee Aquarium Thermometer**. Доступны GPIO щупа,
 обычного LED и BOOT, полярность LED, пауза между измерениями, период отправки
 и порог изменения в сотых долях °C. По умолчанию: GPIO4 / GPIO15 / GPIO9,
 активный низкий LED, 5 с / 60 с / 20 (0,2 °C). Длительность преобразования
 щупа добавляется к паузе измерения. Выбирайте GPIO по схеме конкретной платы:
 диапазон настройки не гарантирует доступность каждого контакта.
 
-> Run `idf.py menuconfig` → **Aquarium Sensor** to configure probe, conventional
+> Run `idf.py menuconfig` → **Alice Zigbee Aquarium Thermometer** to configure probe, conventional
 > LED and BOOT GPIOs, LED polarity, sample pause, report interval, and change
 > threshold in hundredths of a degree. Defaults: GPIO4 / GPIO15 / GPIO9,
 > active-low LED, 5 s / 60 s / 20 (0.2 °C). Probe conversion time adds to the

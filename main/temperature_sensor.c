@@ -328,6 +328,6 @@ void app_main(void)
         nvs_err = nvs_flash_init();
     }
     ESP_ERROR_CHECK(nvs_err);
-    ESP_LOGI(TAG, "Start ESP Zigbee Stack");
+    ESP_LOGI(TAG, "Alice Zigbee Aquarium Thermometer: starting Zigbee stack");
     ESP_ERROR_CHECK(xTaskCreate(esp_zigbee_stack_main_task, "Zigbee_main", 4096, NULL, 5, NULL) == pdPASS ? ESP_OK : ESP_ERR_NO_MEM);
 }

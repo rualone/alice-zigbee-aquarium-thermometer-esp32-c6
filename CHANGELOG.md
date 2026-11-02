@@ -1,4 +1,4 @@
-# Changelog
+# Alice Zigbee Aquarium Thermometer — Changelog
 
 ## 0.1.0 — unreleased
 

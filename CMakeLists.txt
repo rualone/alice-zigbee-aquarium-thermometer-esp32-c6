@@ -1,3 +1,3 @@
 cmake_minimum_required(VERSION 3.16)
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
-project(aquarium_sensor VERSION 0.1.0)
+project(alice_zigbee_aquarium_thermometer VERSION 0.1.0)
