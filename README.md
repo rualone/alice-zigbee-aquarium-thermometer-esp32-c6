@@ -1,8 +1,15 @@
-# alice-zigbee-aquarium-thermometer
+# alice-zigbee-aquarium-thermometer-esp32-c6
 
-**Алиса · Zigbee · ESP32-C6 · DS18B20 · ESP-IDF 6.1**
+[![Сборка ESP-IDF](https://github.com/rualone/alice-zigbee-aquarium-thermometer-esp32-c6/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/rualone/alice-zigbee-aquarium-thermometer-esp32-c6/actions/workflows/build.yml)
+[![Лицензия MIT](https://img.shields.io/badge/лицензия-MIT-blue)](LICENSE)
+[![ESP-IDF 6.1](https://img.shields.io/badge/ESP--IDF-6.1-00979D)](#сборка-и-прошивка)
+[![ESP32-C6](https://img.shields.io/badge/ESP32--C6-Zigbee-E7352C)](#компоненты)
+[![DS18B20](https://img.shields.io/badge/датчик-DS18B20-2563EB)](#подключение)
+[![Проверено с Миди](https://img.shields.io/badge/проверено-Станция_Миди-6D28D9)](docs/VALIDATION.md)
 
-[Схема](#подключение) · [Сборка](#сборка-и-прошивка) · [Проверки](docs/VALIDATION.md) · [Участие](CONTRIBUTING.md)
+**Термометр для аквариума с прямым подключением к Алисе через Zigbee.**
+
+[Схема](#подключение) · [Сборка](#сборка-и-прошивка) · [Проверки](docs/VALIDATION.md) · [Участие](CONTRIBUTING.md) · [Сообщить об ошибке](https://github.com/rualone/alice-zigbee-aquarium-thermometer-esp32-c6/issues/new/choose) · [Релизы](https://github.com/rualone/alice-zigbee-aquarium-thermometer-esp32-c6/releases)
 
 Датчик температуры воды на ESP32-C6 SuperMini и DS18B20 с прямым Zigbee-подключением к Яндекс Станции Миди. Работа устройства подтверждена владельцем сборки. Wi-Fi, MQTT и отдельный сервер не требуются.
 
@@ -38,9 +45,14 @@ GND  --------------------- GND
 ## Сборка и прошивка
 
 1. Установите ESP-IDF 6.1 и расширение **Espressif IDF** для VS Code.
-2. Скачайте репозиторий или клонируйте его и откройте корневую папку в VS Code.
+2. Скачайте репозиторий или клонируйте его командами ниже и откройте корневую папку в VS Code.
 3. Выберите установленное окружение ESP-IDF и откройте терминал расширения.
 4. Выполните команды ниже из корня проекта.
+
+```sh
+git clone https://github.com/rualone/alice-zigbee-aquarium-thermometer-esp32-c6.git
+cd alice-zigbee-aquarium-thermometer-esp32-c6
+```
 
 Проект использует ESP-IDF. Сборка проверена с ESP-IDF 6.1 и ESP Zigbee SDK 2.0.5. Зависимости загружаются менеджером компонентов, при первой сборке нужен интернет.
 Команда set-target предназначена для первоначальной настройки; она пересоздаёт конфигурацию сборки.
@@ -96,3 +108,15 @@ idf.py -p PORT flash monitor
 ## Статус
 
 Версия 0.1.0 готовится к первому релизу. Подробные подтверждения и непроверенные сценарии перечислены в [листе проверки](docs/VALIDATION.md). Совместимость с другими хабами и вариантами ESP32-C6 не гарантируется. GitHub Actions проверяет сборку, но не заменяет испытания на оборудовании.
+
+## Ссылки проекта
+
+- [Исходный код](https://github.com/rualone/alice-zigbee-aquarium-thermometer-esp32-c6)
+- [Проверка сборки](https://github.com/rualone/alice-zigbee-aquarium-thermometer-esp32-c6/actions/workflows/build.yml)
+- [Сообщения об ошибках и предложения](https://github.com/rualone/alice-zigbee-aquarium-thermometer-esp32-c6/issues)
+- [Релизы](https://github.com/rualone/alice-zigbee-aquarium-thermometer-esp32-c6/releases)
+- [История изменений](CHANGELOG.md)
+
+Бейдж сборки отражает выполнение GitHub Actions, а не проверку на оборудовании.
+Список подтверждённых испытаний находится в [документе проверки](docs/VALIDATION.md).
+Готовые бинарные файлы появятся в разделе релизов после их отдельной публикации.
