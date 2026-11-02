@@ -1,0 +1,34 @@
+menu "Aquarium Sensor"
+    config AQUARIUM_DATA_GPIO
+        int "DS18B20 data GPIO"
+        range 0 30
+        default 4
+    config AQUARIUM_LED_ENABLED
+        bool "Enable conventional status LED"
+        default y
+    config AQUARIUM_LED_GPIO
+        int "Status LED GPIO (not addressable RGB)"
+        range 0 30
+        default 15
+        depends on AQUARIUM_LED_ENABLED
+    config AQUARIUM_LED_ACTIVE_LOW
+        bool "LED is active low"
+        default y
+        depends on AQUARIUM_LED_ENABLED
+    config AQUARIUM_BOOT_GPIO
+        int "Pairing reset button GPIO (active low)"
+        range 0 30
+        default 9
+    config AQUARIUM_SAMPLE_SECONDS
+        int "Pause between measurements (seconds)"
+        range 2 3600
+        default 5
+    config AQUARIUM_REPORT_SECONDS
+        int "Periodic report interval (seconds)"
+        range 5 3600
+        default 60
+    config AQUARIUM_DELTA_CENTI
+        int "Report change threshold (hundredths of a degree C)"
+        range 1 1000
+        default 20
+endmenu

@@ -1,0 +1,13 @@
+/build*/
+/managed_components/
+/.local/
+/sdkconfig
+/sdkconfig.old
+/sdkconfig.*.old
+.DS_Store
+*.zip
+*.log
+.env
+.env.*
+!.env.example
+.vscode/settings.json
