@@ -13,7 +13,7 @@ menu "Alice Zigbee Aquarium Thermometer"
         depends on AQUARIUM_LED_ENABLED
     config AQUARIUM_LED_ACTIVE_LOW
         bool "Светодиод с активным низким уровнем"
-        default y
+        default n
         depends on AQUARIUM_LED_ENABLED
     config AQUARIUM_BOOT_GPIO
         int "GPIO кнопки сброса привязки (активный низкий уровень)"
