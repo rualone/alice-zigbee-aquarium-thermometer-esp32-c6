@@ -31,3 +31,8 @@ Copyright (c) 2026 VlasovLabTech, MIT.
 после пятисекундного удержания. Реализация перенесена на ESP-IDF;
 это не исходная Arduino-прошивка. Официальное одобрение Яндексом или Espressif
 не заявляется.
+
+## Ресурсы страницы диагностики
+
+- Inter — Copyright 2020 The Inter Project Authors. [SIL Open Font License 1.1](web/assets/fonts/OFL.txt).
+- Material Symbols — Google, [Apache-2.0](web/assets/Apache-2.0.txt); [уведомление](web/assets/material-symbols-NOTICE.txt).

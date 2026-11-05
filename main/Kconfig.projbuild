@@ -14,7 +14,7 @@ menu "Alice Zigbee Aquarium Thermometer"
     config AQUARIUM_RGB_BRIGHTNESS
         int "Яркость RGB (1–255)"
         range 1 255
-        default 4
+        default 1
     config AQUARIUM_BOOT_GPIO
         int "GPIO кнопки сброса привязки (активный низкий уровень)"
         range 0 30

@@ -1,0 +1,44 @@
+name: Страница диагностики
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "web/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Проверка страницы
+        run: node --test web/tests/*.test.js
+      - uses: actions/configure-pages@v5
+      - name: Подготовка файлов сайта
+        run: |
+          mkdir -p _site
+          cp web/index.html web/styles.css web/app.js web/protocol.js _site/
+          cp -R web/assets _site/assets
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - name: Публикация
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -29,6 +29,7 @@
 #include "ezbee/zha.h"
 
 #include "temperature_sensor.h"
+#include "diagnostics.h"
 
 static atomic_bool network_ready = false;
 static atomic_bool probe_ok = false;
@@ -82,6 +83,7 @@ static bool report_temperature(void)
     } else {
         ESP_LOGE(TAG, "Failed to send ZCL Report Attribute request with error(0x%04x)", ret);
     }
+    diagnostics_report(ret == EZB_ERR_NONE);
     return ret == EZB_ERR_NONE;
 }
 
@@ -131,6 +133,7 @@ static void indicator_task(void *arg)
             pressing = false;
             if (held) {
                 esp_zigbee_lock_acquire(portMAX_DELAY);
+                diagnostics_event("Pairing reset requested by BOOT");
                 esp_zigbee_factory_reset();
                 esp_zigbee_lock_release();
             }
@@ -158,6 +161,7 @@ static void aquarium_service_task(void *arg)
         if (err == ESP_OK) err = ds18b20_get_temperature(probe, &temperature);
         bool valid = err == ESP_OK && isfinite(temperature) && temperature >= -55 && temperature <= 125;
         atomic_store(&probe_ok, valid);
+        diagnostics_measurement(valid, temperature, err);
         if (valid) {
             ESP_LOGI(TAG, "Water temperature %.2f C", temperature);
             esp_app_temp_sensor_handler(temperature);
@@ -226,6 +230,7 @@ static bool esp_zigbee_app_signal_handler(const ezb_app_signal_t *app_signal)
                 ezb_bdb_start_top_level_commissioning(EZB_BDB_MODE_NETWORK_STEERING);
             } else {
                 atomic_store(&network_ready, true);
+                diagnostics_network(true);
                 ESP_LOGI(TAG, "Device reboot; saved network restored");
             }
         } else {
@@ -237,9 +242,11 @@ static bool esp_zigbee_app_signal_handler(const ezb_app_signal_t *app_signal)
         ezb_bdb_comm_status_t status = *((ezb_bdb_comm_status_t *)ezb_app_signal_get_params(app_signal));
         if (status == EZB_BDB_STATUS_SUCCESS) {
             atomic_store(&network_ready, true);
+                diagnostics_network(true);
             ESP_LOGI(TAG, "Joined Zigbee network successfully");
         } else {
             atomic_store(&network_ready, false);
+            diagnostics_network(false);
             ESP_LOGW(TAG, "Failed to join network with status(0x%02x)", status);
             alarm_timer_schedule(esp_zigbee_alarm_bdb_commissioning, EZB_BDB_MODE_NETWORK_STEERING, 1000);
         }
@@ -250,6 +257,7 @@ static bool esp_zigbee_app_signal_handler(const ezb_app_signal_t *app_signal)
     } break;
     case EZB_ZDO_SIGNAL_LEAVE: {
         atomic_store(&network_ready, false);
+            diagnostics_network(false);
         const ezb_zdo_signal_leave_params_t *leave_params = ezb_app_signal_get_params(app_signal);
         ESP_LOGI(TAG, "Left network successfully with type(0x%02x)", leave_params->leave_type);
     } break;
@@ -343,6 +351,7 @@ void app_main(void)
         nvs_err = nvs_flash_init();
     }
     ESP_ERROR_CHECK(nvs_err);
+    diagnostics_start();
     ESP_LOGI(TAG, "Alice Zigbee Aquarium Thermometer: starting Zigbee stack");
     ESP_ERROR_CHECK(xTaskCreate(esp_zigbee_stack_main_task, "Zigbee_main", 4096, NULL, 5, NULL) == pdPASS ? ESP_OK : ESP_ERR_NO_MEM);
 }
