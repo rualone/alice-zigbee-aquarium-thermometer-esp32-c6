@@ -22,8 +22,8 @@
 
 #define ESP_ZIGBEE_STORAGE_PARTITION_NAME "nvs"
 
-#define ESP_MANUFACTURER_NAME "\x03""DIY"
-#define ESP_MODEL_IDENTIFIER "\x0c""AquariumTemp"
+#define ESP_MANUFACTURER_NAME "\x0f""Ivan Pozdniakov"
+#define ESP_MODEL_IDENTIFIER "\x1d""Aquarium Thermometer ESP32 C6"
 
 #define ESP_ZIGBEE_ZED_CONFIG()                         \
     {                                                   \
