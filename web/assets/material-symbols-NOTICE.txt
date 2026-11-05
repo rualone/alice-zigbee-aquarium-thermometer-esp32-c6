@@ -1,3 +1,6 @@
 Material Symbols Outlined — Google. Apache License 2.0.
 Source: https://github.com/google/material-design-icons
 Local SVG symbols, outlined style. See Apache-2.0.txt.
+
+Settings gear: Google Material Icons, Filled, Apache License 2.0.
+Source: https://github.com/google/material-design-icons/tree/master/src/action/settings/materialicons

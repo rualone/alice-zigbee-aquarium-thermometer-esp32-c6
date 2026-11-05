@@ -30,6 +30,7 @@
 
 #include "temperature_sensor.h"
 #include "diagnostics.h"
+#include "settings.h"
 
 static atomic_bool network_ready = false;
 static atomic_bool probe_ok = false;
@@ -108,7 +109,7 @@ static void indicator_task(void *arg)
     ESP_ERROR_CHECK(led_strip_clear(rgb));
     TickType_t pressed = 0;
     bool pressing = false;
-    int previous = -1;
+    int previous = -1, previous_brightness = -1;
     for (;;) {
         TickType_t now = xTaskGetTickCount();
         bool down = !gpio_get_level(CONFIG_AQUARIUM_BOOT_GPIO);
@@ -116,8 +117,9 @@ static void indicator_task(void *arg)
         bool held = pressing && now - pressed >= pdMS_TO_TICKS(5000);
         int state = held ? 0 : !atomic_load(&network_ready) ? 1 :
                     !atomic_load(&probe_ok) ? 2 : 3;
-        if (state != previous) {
-            unsigned v = CONFIG_AQUARIUM_RGB_BRIGHTNESS;
+        unsigned v = settings_get().brightness;
+        if (state != previous || (int)v != previous_brightness) {
+            previous_brightness = v;
             ESP_ERROR_CHECK(led_strip_set_pixel(rgb, 0,
                 (state == 1 || state == 2) ? v : 0,
                 (state == 1 || state == 3) ? v : 0,
@@ -154,20 +156,28 @@ static void aquarium_service_task(void *arg)
     float sent = NAN;
     bool invalid_reported = false;
     for (;;) {
+        aquarium_settings_t settings = settings_get();
         esp_err_t err = ESP_OK;
         if (!probe) err = ds18b20_new_device_from_bus(bus, &sensor_cfg, &probe);
         float temperature = NAN;
         if (err == ESP_OK) err = ds18b20_trigger_temperature_conversion(probe);
         if (err == ESP_OK) err = ds18b20_get_temperature(probe, &temperature);
         bool valid = err == ESP_OK && isfinite(temperature) && temperature >= -55 && temperature <= 125;
+        float raw_temperature = temperature;
+        if (valid) {
+            settings = settings_get();
+            temperature += settings.offset_centi / 100.0f;
+            valid = temperature >= -55 && temperature <= 125;
+            if (!valid) err = ESP_ERR_INVALID_RESPONSE;
+        }
         atomic_store(&probe_ok, valid);
-        diagnostics_measurement(valid, temperature, err);
+        diagnostics_measurement(valid, temperature, raw_temperature, settings.offset_centi, err);
         if (valid) {
             ESP_LOGI(TAG, "Water temperature %.2f C", temperature);
             esp_app_temp_sensor_handler(temperature);
             TickType_t now = xTaskGetTickCount();
             if (atomic_load(&network_ready) && (invalid_reported || isnan(sent) ||
-                now - last_report >= pdMS_TO_TICKS(CONFIG_AQUARIUM_REPORT_SECONDS * 1000) || fabsf(temperature - sent) >= CONFIG_AQUARIUM_DELTA_CENTI / 100.0f)) {
+                now - last_report >= pdMS_TO_TICKS(settings.report_seconds * 1000) || fabsf(temperature - sent) >= settings.delta_centi / 100.0f)) {
                 if (report_temperature()) {
                     last_report = now;
                     sent = temperature;
@@ -188,7 +198,9 @@ static void aquarium_service_task(void *arg)
                 ESP_ERROR_CHECK(onewire_new_bus_rmt(&cfg, &rmt, &bus));
             }
         }
-        vTaskDelay(pdMS_TO_TICKS(CONFIG_AQUARIUM_SAMPLE_SECONDS * 1000));
+        for (unsigned waited = 0; waited < (unsigned)settings_get().sample_seconds * 1000; waited += 100) {
+            vTaskDelay(pdMS_TO_TICKS(100));
+        }
     }
 }
 
@@ -351,6 +363,7 @@ void app_main(void)
         nvs_err = nvs_flash_init();
     }
     ESP_ERROR_CHECK(nvs_err);
+    settings_init();
     diagnostics_start();
     ESP_LOGI(TAG, "Alice Zigbee Aquarium Thermometer: starting Zigbee stack");
     ESP_ERROR_CHECK(xTaskCreate(esp_zigbee_stack_main_task, "Zigbee_main", 4096, NULL, 5, NULL) == pdPASS ? ESP_OK : ESP_ERR_NO_MEM);

@@ -11,6 +11,8 @@ jobs:
     container: espressif/idf:v6.1
     steps:
       - uses: actions/checkout@v4
+      - name: Проверка хранения настроек
+        run: python tests/test_settings.py
       - name: Сборка для ESP32-C6
         shell: bash
         run: |

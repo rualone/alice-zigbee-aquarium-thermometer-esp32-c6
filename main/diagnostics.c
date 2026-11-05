@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 #include "diagnostics.h"
+#include "settings.h"
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
@@ -19,7 +21,8 @@
 static SemaphoreHandle_t mutex;
 static struct {
     bool measured, valid, network;
-    float temperature;
+    float temperature, raw_temperature;
+    int offset_centi;
     uint32_t errors, report_failures, sequence;
     int64_t measured_ms, reported_ms;
     esp_err_t error;
@@ -45,11 +48,12 @@ void diagnostics_event(const char *message)
     event_locked(message);
     xSemaphoreGive(mutex);
 }
-void diagnostics_measurement(bool valid, float temperature, esp_err_t error)
+void diagnostics_measurement(bool valid, float temperature, float raw_temperature, int offset_centi, esp_err_t error)
 {
     if (!mutex) return;
     xSemaphoreTake(mutex, portMAX_DELAY);
     data.measured = true; data.valid = valid; data.temperature = temperature;
+    data.raw_temperature = raw_temperature; data.offset_centi = offset_centi;
     data.measured_ms = uptime_ms(); data.error = error;
     char message[EVENT_LENGTH];
     if (valid) snprintf(message, sizeof(message), "Water temperature: %.2f C", temperature);
@@ -83,11 +87,21 @@ static void snapshot(void)
     cJSON_AddStringToObject(root, "firmware", esp_app_get_description()->version);
     cJSON_AddNumberToObject(root, "uptime_ms", uptime_ms());
     cJSON_AddNumberToObject(root, "reset_reason", esp_reset_reason());
-    cJSON_AddNumberToObject(root, "sample_interval_ms", CONFIG_AQUARIUM_SAMPLE_SECONDS * 1000);
+    cJSON_AddNumberToObject(root, "sample_interval_ms", settings_get().sample_seconds * 1000);
+    aquarium_settings_t cfg = settings_get();
+    cJSON *settings = cJSON_AddObjectToObject(root, "settings");
+    cJSON_AddNumberToObject(settings,"brightness",cfg.brightness);
+    cJSON_AddNumberToObject(settings,"sample_seconds",cfg.sample_seconds);
+    cJSON_AddNumberToObject(settings,"report_seconds",cfg.report_seconds);
+    cJSON_AddNumberToObject(settings,"delta_centi",cfg.delta_centi);
+    cJSON_AddNumberToObject(settings,"offset_centi",cfg.offset_centi);
     xSemaphoreTake(mutex, portMAX_DELAY);
     cJSON_AddStringToObject(root, "probe", !data.measured ? "waiting" : data.valid ? "ok" : "error");
     if (data.measured && data.valid) cJSON_AddNumberToObject(root, "temperature_c", data.temperature);
     else cJSON_AddNullToObject(root, "temperature_c");
+    if (data.measured && data.valid) cJSON_AddNumberToObject(root,"raw_temperature_c",data.raw_temperature);
+    else cJSON_AddNullToObject(root,"raw_temperature_c");
+    cJSON_AddNumberToObject(root,"applied_offset_centi",data.offset_centi);
     if (data.measured) cJSON_AddNumberToObject(root, "measurement_age_ms", uptime_ms() - data.measured_ms);
     else cJSON_AddNullToObject(root, "measurement_age_ms");
     cJSON_AddNumberToObject(root, "probe_errors", data.errors);
@@ -115,15 +129,35 @@ static void snapshot(void)
     }
     cJSON_Delete(root);
 }
+static void configure(const char *text) {
+    cJSON *r=cJSON_Parse(text);
+    const char *names[]={"brightness","sample_seconds","report_seconds","delta_centi","offset_centi"};
+    int values[5]={0,0,0,0,settings_get().offset_centi}; bool ok=cJSON_IsObject(r) && (cJSON_GetArraySize(r)==4 || cJSON_GetArraySize(r)==5);
+    const int mins[]={0,2,5,1,-500}, maxs[]={255,3600,3600,1000,500};
+    for(int i=0;i<5;i++) {
+        cJSON *v=cJSON_GetObjectItemCaseSensitive(r,names[i]);
+        if(i==4 && !v)continue; // Older pages preserve the existing correction.
+        if(!cJSON_IsNumber(v) || !isfinite(v->valuedouble) || v->valuedouble<mins[i] ||
+            v->valuedouble>maxs[i] || floor(v->valuedouble)!=v->valuedouble) ok=false;
+        else values[i]=(int)v->valuedouble;
+    }
+    esp_err_t err=ok ? settings_save((aquarium_settings_t){values[0],values[1],values[2],values[3],values[4]}) : ESP_ERR_INVALID_ARG;
+    cJSON_Delete(r);
+    diagnostics_event(err==ESP_OK ? "Settings saved" : "Settings save failed");
+    printf("\n@AQSET {\"ok\":%s}\n",err==ESP_OK ? "true" : "false");
+    fflush(stdout);
+    snapshot();
+}
 static void usb_task(void *arg)
 {
-    char line[64]; unsigned used = 0; bool discard = false;
+    char line[256]; unsigned used = 0; bool discard = false;
     for (;;) {
         char ch;
         if (usb_serial_jtag_read_bytes(&ch, 1, pdMS_TO_TICKS(100)) <= 0) continue;
         if (ch == '\n' || ch == '\r') {
             line[used] = 0;
             if (!discard && strcmp(line, "AQ1 SNAPSHOT") == 0) snapshot();
+            else if (!discard && strncmp(line,"AQ1 SETTINGS ",13)==0) configure(line+13);
             used = 0; discard = false;
         } else if (used < sizeof(line) - 1 && !discard) line[used++] = ch;
         else discard = true;

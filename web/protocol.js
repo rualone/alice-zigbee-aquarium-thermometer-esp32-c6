@@ -21,6 +21,8 @@ export function duration(ms) {
 }
 export function eventText(message) {
  const fixed = {
+  "Settings saved": "Настройки сохранены.",
+  "Settings save failed": "Не удалось сохранить настройки.",
   "Device started; diagnostics protocol v1": "Термометр включился и готов к работе.",
   "Zigbee local state: joined": "Термометр подключился к хабу.",
   "Zigbee local state: searching/offline": "Термометр ищет хаб.",
@@ -55,6 +57,7 @@ export function report(d, capturedAt, connected) {
  `Версия: ${d.firmware}`, `Время работы при получении: ${duration(d.uptime_ms)}`,
  `Причина запуска (код ESP-IDF): ${d.reset_reason}`, `Щуп: ${({ok:"исправен",error:"ошибка чтения",waiting:"ожидание измерения"})[d.probe] || d.probe}`,
  `Температура: ${d.temperature_c === null ? "нет действительного измерения" : d.temperature_c.toLocaleString("ru-RU", {minimumFractionDigits:1, maximumFractionDigits:1}) + " °C"}`,
+ ...(typeof d.applied_offset_centi==='number' ? [`Исходная температура: ${d.raw_temperature_c===null ? 'нет' : Number(d.raw_temperature_c).toLocaleString('ru-RU')} °C`, `Применённая поправка: ${(d.applied_offset_centi/100).toLocaleString('ru-RU')} °C`] : []),
  `Возраст измерения при получении: ${d.measurement_age_ms === null ? "нет" : duration(d.measurement_age_ms)}`,
  `Ошибки чтения: ${d.probe_errors}`, `Ошибки постановки отчёта в очередь: ${d.report_failures}`,
  `Локальное состояние Zigbee: ${d.zigbee_joined ? "сеть сохранена/подключена" : "ожидание сети"}`,
