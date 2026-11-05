@@ -3,18 +3,18 @@ menu "Alice Zigbee Aquarium Thermometer"
         int "GPIO данных DS18B20"
         range 0 30
         default 4
-    config AQUARIUM_LED_ENABLED
-        bool "Включить обычный светодиод состояния"
-        default y
     config AQUARIUM_LED_GPIO
-        int "GPIO обычного светодиода (не адресного RGB)"
+        int "GPIO синего индикатора обнаружения (активный высокий)"
         range 0 30
         default 15
-        depends on AQUARIUM_LED_ENABLED
-    config AQUARIUM_LED_ACTIVE_LOW
-        bool "Светодиод с активным низким уровнем"
-        default n
-        depends on AQUARIUM_LED_ENABLED
+    config AQUARIUM_RGB_GPIO
+        int "GPIO RGB WS2812"
+        range 0 30
+        default 8
+    config AQUARIUM_RGB_BRIGHTNESS
+        int "Яркость RGB (1–255)"
+        range 1 255
+        default 4
     config AQUARIUM_BOOT_GPIO
         int "GPIO кнопки сброса привязки (активный низкий уровень)"
         range 0 30

@@ -1,5 +1,6 @@
 dependencies:
-  idf: ">=6.1,<6.2"
-  espressif/esp-zigbee-lib: "2.0.5"
-  espressif/ds18b20: "0.3.1~1"
-  espressif/onewire_bus: "1.1.2"
+  idf: '>=6.1,<6.2'
+  espressif/esp-zigbee-lib: 2.0.5
+  espressif/ds18b20: 0.3.1~1
+  espressif/onewire_bus: 1.1.2
+  espressif/led_strip: 3.1.1

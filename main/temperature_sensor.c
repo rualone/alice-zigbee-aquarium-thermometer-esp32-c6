@@ -16,7 +16,7 @@
 #include "esp_err.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
-#include "nvs.h"
+#include "led_strip.h"
 
 #include "driver/gpio.h"
 #include "ds18b20.h"
@@ -32,43 +32,16 @@
 
 static atomic_bool network_ready = false;
 static atomic_bool probe_ok = false;
-static atomic_bool indication_enabled = true;
-static atomic_uint indication_revision = 0;
-
-/* Flash writes run in the indicator task, never in a Zigbee callback. */
-static void load_indication(void)
-{
-    nvs_handle_t handle;
-    uint8_t enabled = 1;
-    esp_err_t err = nvs_open("aquarium", NVS_READONLY, &handle);
-    if (err == ESP_OK) {
-        err = nvs_get_u8(handle, "led_enabled", &enabled);
-        nvs_close(handle);
-    }
-    if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND)
-        ESP_LOGW("INDICATION", "Cannot load setting: %s", esp_err_to_name(err));
-    atomic_store(&indication_enabled, enabled != 0);
-}
-
-static esp_err_t save_indication(bool enabled)
-{
-    nvs_handle_t handle;
-    esp_err_t err = nvs_open("aquarium", NVS_READWRITE, &handle);
-    if (err != ESP_OK) return err;
-    err = nvs_set_u8(handle, "led_enabled", enabled);
-    if (err == ESP_OK) err = nvs_commit(handle);
-    nvs_close(handle);
-    return err;
-}
 static const char *TAG = "TEMPERATURE_SENSOR";
 
 #define ESP_TEMP_SENSOR_MIN_VALUE       (-55) /* Sensor min measured value (degree Celsius) */
 #define ESP_TEMP_SENSOR_MAX_VALUE       (125)  /* Sensor max measured value (degree Celsius) */
 _Static_assert(CONFIG_AQUARIUM_DATA_GPIO != CONFIG_AQUARIUM_BOOT_GPIO, "Probe and button GPIO must differ");
-#if CONFIG_AQUARIUM_LED_ENABLED
-_Static_assert(CONFIG_AQUARIUM_LED_GPIO != CONFIG_AQUARIUM_DATA_GPIO &&
-               CONFIG_AQUARIUM_LED_GPIO != CONFIG_AQUARIUM_BOOT_GPIO, "LED GPIO conflicts");
-#endif
+_Static_assert(CONFIG_AQUARIUM_RGB_GPIO != CONFIG_AQUARIUM_DATA_GPIO &&
+    CONFIG_AQUARIUM_RGB_GPIO != CONFIG_AQUARIUM_BOOT_GPIO &&
+    CONFIG_AQUARIUM_RGB_GPIO != CONFIG_AQUARIUM_LED_GPIO &&
+    CONFIG_AQUARIUM_LED_GPIO != CONFIG_AQUARIUM_DATA_GPIO &&
+    CONFIG_AQUARIUM_LED_GPIO != CONFIG_AQUARIUM_BOOT_GPIO, "Indicator GPIO conflicts");
 
 static int16_t zb_temperature_to_s16(float temp) { return (int16_t)(temp * 100); }
 
@@ -112,59 +85,50 @@ static bool report_temperature(void)
     return ret == EZB_ERR_NONE;
 }
 
-/* GPIO15 LED, active low, according to supplied board pinout.
- * Separate task keeps BOOT and LED responsive during sensor conversion. */
+/* Reset-ready > discovery > probe failure > normal operation.
+ * RGB uses a dedicated RMT TX channel, separate from the probe bus. */
 static void indicator_task(void *arg)
 {
-    gpio_config_t cfg = {.pin_bit_mask = 1ULL << CONFIG_AQUARIUM_BOOT_GPIO, .mode = GPIO_MODE_INPUT,
-                         .pull_up_en = GPIO_PULLUP_ENABLE};
+    gpio_config_t cfg = {.pin_bit_mask = 1ULL << CONFIG_AQUARIUM_BOOT_GPIO,
+        .mode = GPIO_MODE_INPUT, .pull_up_en = GPIO_PULLUP_ENABLE};
     ESP_ERROR_CHECK(gpio_config(&cfg));
-#if CONFIG_AQUARIUM_LED_ENABLED
-#if CONFIG_AQUARIUM_LED_ACTIVE_LOW
-    gpio_set_level(CONFIG_AQUARIUM_LED_GPIO, 1);
-#else
     gpio_set_level(CONFIG_AQUARIUM_LED_GPIO, 0);
-#endif
     ESP_ERROR_CHECK(gpio_set_direction(CONFIG_AQUARIUM_LED_GPIO, GPIO_MODE_OUTPUT));
-#endif
+    led_strip_handle_t rgb;
+    led_strip_config_t strip = {
+        .strip_gpio_num = CONFIG_AQUARIUM_RGB_GPIO,
+        .max_leds = 1,
+        .led_model = LED_MODEL_WS2812,
+        .color_component_format = LED_STRIP_COLOR_COMPONENT_FMT_GRB,
+    };
+    led_strip_rmt_config_t rmt = {.resolution_hz = 10000000};
+    ESP_ERROR_CHECK(led_strip_new_rmt_device(&strip, &rmt, &rgb));
+    ESP_ERROR_CHECK(led_strip_clear(rgb));
     TickType_t pressed = 0;
-    unsigned saved_revision = 0;
-    TickType_t changed_at = 0;
-    unsigned pending_revision = 0;
+    bool pressing = false;
+    int previous = -1;
     for (;;) {
         TickType_t now = xTaskGetTickCount();
-        unsigned ms = now * portTICK_PERIOD_MS;
-        bool held = pressed && now - pressed >= pdMS_TO_TICKS(5000);
-        bool on = held ? (ms % 200 < 100) :
-                  !atomic_load(&probe_ok) ? (ms % 2000 < 100 || (ms % 2000 >= 250 && ms % 2000 < 350)) :
-                  !atomic_load(&network_ready) ? (ms % 1000 < 500) : (ms % 5000 < 60);
-        on = on && atomic_load(&indication_enabled);
-        unsigned revision = atomic_load(&indication_revision);
-        if (revision != pending_revision) {
-            pending_revision = revision;
-            changed_at = now;
+        bool down = !gpio_get_level(CONFIG_AQUARIUM_BOOT_GPIO);
+        if (down && !pressing) { pressed = now; pressing = true; }
+        bool held = pressing && now - pressed >= pdMS_TO_TICKS(5000);
+        int state = held ? 0 : !atomic_load(&network_ready) ? 1 :
+                    !atomic_load(&probe_ok) ? 2 : 3;
+        if (state != previous) {
+            unsigned v = CONFIG_AQUARIUM_RGB_BRIGHTNESS;
+            ESP_ERROR_CHECK(led_strip_set_pixel(rgb, 0,
+                (state == 1 || state == 2) ? v : 0,
+                (state == 1 || state == 3) ? v : 0,
+                state == 0 ? v : 0));
+            ESP_ERROR_CHECK(led_strip_refresh(rgb));
+            previous = state;
+            ESP_LOGI(TAG, "Indicator state: %s", state == 0 ? "reset-ready" :
+                state == 1 ? "discovery" : state == 2 ? "probe-error" : "normal");
         }
-        if (pending_revision != saved_revision && now - changed_at >= pdMS_TO_TICKS(1000)) {
-            esp_err_t err = save_indication(atomic_load(&indication_enabled));
-            if (err == ESP_OK) saved_revision = pending_revision;
-            else {
-                ESP_LOGW(TAG, "Cannot save LED state: %s", esp_err_to_name(err));
-                changed_at = now; // Retry without blocking Zigbee processing.
-            }
-        }
-#if CONFIG_AQUARIUM_LED_ENABLED
-#if CONFIG_AQUARIUM_LED_ACTIVE_LOW
-        gpio_set_level(CONFIG_AQUARIUM_LED_GPIO, !on);
-#else
-        gpio_set_level(CONFIG_AQUARIUM_LED_GPIO, on);
-#endif
-#else
-        (void)on;
-#endif
-        if (!gpio_get_level(CONFIG_AQUARIUM_BOOT_GPIO)) {
-            if (!pressed) pressed = now;
-        } else if (pressed) {
-            pressed = 0;
+        gpio_set_level(CONFIG_AQUARIUM_LED_GPIO,
+            state == 1 && (now * portTICK_PERIOD_MS) % 200 < 100);
+        if (!down && pressing) {
+            pressing = false;
             if (held) {
                 esp_zigbee_lock_acquire(portMAX_DELAY);
                 esp_zigbee_factory_reset();
@@ -307,21 +271,6 @@ static bool esp_zigbee_app_signal_handler(const ezb_app_signal_t *app_signal)
 static void esp_zigbee_zcl_core_action_handler(ezb_zcl_core_action_callback_id_t callback_id, void *message)
 {
     switch (callback_id) {
-    case EZB_ZCL_CORE_SET_ATTR_VALUE_CB_ID: {
-        const ezb_zcl_set_attr_value_message_t *update = message;
-        if (update && update->info.status == EZB_ZCL_STATUS_SUCCESS &&
-            update->info.dst_ep == ESP_ZIGBEE_INDICATION_EP_ID &&
-            update->info.cluster_role == EZB_ZCL_CLUSTER_SERVER &&
-            update->info.cluster_id == EZB_ZCL_CLUSTER_ID_ON_OFF &&
-            update->in.attribute.id == EZB_ZCL_ATTR_ON_OFF_ON_OFF_ID &&
-            update->in.attribute.data.type == EZB_ZCL_ATTR_TYPE_BOOL &&
-            update->in.attribute.data.size == 1 && update->in.attribute.data.value) {
-            bool enabled = *(const uint8_t *)update->in.attribute.data.value != 0;
-            if (atomic_exchange(&indication_enabled, enabled) != enabled)
-                atomic_fetch_add(&indication_revision, 1);
-            ESP_LOGI(TAG, "Indication %s", enabled ? "enabled" : "disabled");
-        }
-    } break;
     case EZB_ZCL_CORE_DEFAULT_RSP_CB_ID: {
         ezb_zcl_cmd_default_rsp_message_t *default_rsp = (ezb_zcl_cmd_default_rsp_message_t *)message;
         ESP_LOGI(TAG, "Received ZCL Default Response: status(0x%02x)", default_rsp->in.status_code);
@@ -349,17 +298,6 @@ esp_err_t esp_zigbee_create_zha_temperature_sensor_device(void)
     ezb_zcl_basic_cluster_desc_add_attr(basic_desc, EZB_ZCL_ATTR_BASIC_MODEL_IDENTIFIER_ID, (void *)ESP_MODEL_IDENTIFIER);
 
     ESP_ERROR_CHECK(ezb_af_device_add_endpoint_desc(dev_desc, ep_desc));
-    /* Standard controllable light endpoint, not a physical power relay. */
-    ezb_zha_on_off_light_config_t led_cfg = EZB_ZHA_ON_OFF_LIGHT_CONFIG();
-    led_cfg.on_off_cfg.on_off = atomic_load(&indication_enabled);
-    ezb_af_ep_desc_t led_ep = ezb_zha_create_on_off_light(ESP_ZIGBEE_INDICATION_EP_ID, &led_cfg);
-    ezb_zcl_cluster_desc_t led_basic = ezb_af_endpoint_get_cluster_desc(
-        led_ep, EZB_ZCL_CLUSTER_ID_BASIC, EZB_ZCL_CLUSTER_SERVER);
-    ezb_zcl_basic_cluster_desc_add_attr(led_basic, EZB_ZCL_ATTR_BASIC_MANUFACTURER_NAME_ID,
-                                      (void *)ESP_MANUFACTURER_NAME);
-    ezb_zcl_basic_cluster_desc_add_attr(led_basic, EZB_ZCL_ATTR_BASIC_MODEL_IDENTIFIER_ID,
-                                      (void *)ESP_MODEL_IDENTIFIER);
-    ESP_ERROR_CHECK(ezb_af_device_add_endpoint_desc(dev_desc, led_ep));
     ESP_ERROR_CHECK(ezb_af_device_desc_register(dev_desc));
 
     ezb_zcl_core_action_handler_register(esp_zigbee_zcl_core_action_handler);
@@ -405,7 +343,6 @@ void app_main(void)
         nvs_err = nvs_flash_init();
     }
     ESP_ERROR_CHECK(nvs_err);
-    load_indication();
     ESP_LOGI(TAG, "Alice Zigbee Aquarium Thermometer: starting Zigbee stack");
     ESP_ERROR_CHECK(xTaskCreate(esp_zigbee_stack_main_task, "Zigbee_main", 4096, NULL, 5, NULL) == pdPASS ? ESP_OK : ESP_ERR_NO_MEM);
 }
