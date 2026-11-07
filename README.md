@@ -1,4 +1,4 @@
-**Термометр для аквариума с прямым подключением к Алисе через Zigbee.**
+# Термометр для аквариума с прямым подключением к Алисе через Zigbee.
 
 [![Сборка ESP-IDF](https://github.com/rualone/alice-zigbee-aquarium-thermometer-esp32-c6/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/rualone/alice-zigbee-aquarium-thermometer-esp32-c6/actions/workflows/build.yml)
 [![Лицензия MIT](https://img.shields.io/badge/лицензия-MIT-blue)](LICENSE)
