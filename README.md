@@ -1,4 +1,4 @@
-# alice-zigbee-aquarium-thermometer-esp32-c6
+**Термометр для аквариума с прямым подключением к Алисе через Zigbee.**
 
 [![Сборка ESP-IDF](https://github.com/rualone/alice-zigbee-aquarium-thermometer-esp32-c6/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/rualone/alice-zigbee-aquarium-thermometer-esp32-c6/actions/workflows/build.yml)
 [![Лицензия MIT](https://img.shields.io/badge/лицензия-MIT-blue)](LICENSE)
@@ -6,8 +6,6 @@
 [![ESP32-C6](https://img.shields.io/badge/ESP32--C6-Zigbee-E7352C)](#компоненты-и-схема-подключения)
 [![DS18B20](https://img.shields.io/badge/датчик-DS18B20-2563EB)](#компоненты-и-схема-подключения)
 [![Проверено с Миди](https://img.shields.io/badge/проверено-Станция_Миди-6D28D9)](docs/VALIDATION.md)
-
-**Термометр для аквариума с прямым подключением к Алисе через Zigbee.**
 
 [Схема](#компоненты-и-схема-подключения) · [Прошивка](#прошивка) · [Диагностика](#диагностика-через-браузер) · [Проверки](docs/VALIDATION.md) · [Участие](CONTRIBUTING.md) · [Сообщить об ошибке](https://github.com/rualone/alice-zigbee-aquarium-thermometer-esp32-c6/issues/new/choose) · [Релизы](https://github.com/rualone/alice-zigbee-aquarium-thermometer-esp32-c6/releases)
 
