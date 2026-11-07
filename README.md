@@ -9,7 +9,6 @@
 [![ESP-IDF 6.1](https://img.shields.io/badge/ESP--IDF-6.1-00979D)](#прошивка)
 [![ESP32-C6](https://img.shields.io/badge/ESP32--C6-Zigbee-E7352C)](#компоненты-и-схема-подключения)
 [![DS18B20](https://img.shields.io/badge/датчик-DS18B20-2563EB)](#компоненты-и-схема-подключения)
-[![Проверено с Миди](https://img.shields.io/badge/проверено-Станция_Миди-6D28D9)](docs/VALIDATION.md)
 
 Датчик температуры воды на ESP32-C6 SuperMini и DS18B20 с прямым Zigbee-подключением к Умному Дому Яндекса. Wi-Fi, MQTT и отдельный сервер не требуются.
 
