@@ -1,13 +1,26 @@
 # Термометр для аквариума с прямым подключением к Алисе через Zigbee.
 
 [![Сборка ESP-IDF](https://github.com/rualone/alice-zigbee-aquarium-thermometer-esp32-c6/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/rualone/alice-zigbee-aquarium-thermometer-esp32-c6/actions/workflows/build.yml)
+[![Последний релиз](https://img.shields.io/github/v/release/rualone/alice-zigbee-aquarium-thermometer-esp32-c6?label=релиз)](https://github.com/rualone/alice-zigbee-aquarium-thermometer-esp32-c6/releases/latest)
+[![GitHub Pages](https://github.com/rualone/alice-zigbee-aquarium-thermometer-esp32-c6/actions/workflows/pages.yml/badge.svg?branch=main)](https://github.com/rualone/alice-zigbee-aquarium-thermometer-esp32-c6/actions/workflows/pages.yml)
+[![Алиса · напрямую по Zigbee](https://img.shields.io/badge/Алиса-напрямую_по_Zigbee-7B3FE4)](#подключение-к-алисе)
+[![Прошивка через браузер](https://img.shields.io/badge/прошивка-через_браузер-315E46)](https://rualone.github.io/alice-zigbee-aquarium-thermometer-esp32-c6/)
 [![Лицензия MIT](https://img.shields.io/badge/лицензия-MIT-blue)](LICENSE)
 [![ESP-IDF 6.1](https://img.shields.io/badge/ESP--IDF-6.1-00979D)](#прошивка)
 [![ESP32-C6](https://img.shields.io/badge/ESP32--C6-Zigbee-E7352C)](#компоненты-и-схема-подключения)
 [![DS18B20](https://img.shields.io/badge/датчик-DS18B20-2563EB)](#компоненты-и-схема-подключения)
 [![Проверено с Миди](https://img.shields.io/badge/проверено-Станция_Миди-6D28D9)](docs/VALIDATION.md)
 
-[Схема](#компоненты-и-схема-подключения) · [Прошивка](#прошивка) · [Диагностика](#диагностика-через-браузер) · [Проверки](docs/VALIDATION.md) · [Участие](CONTRIBUTING.md) · [Сообщить об ошибке](https://github.com/rualone/alice-zigbee-aquarium-thermometer-esp32-c6/issues/new/choose) · [Релизы](https://github.com/rualone/alice-zigbee-aquarium-thermometer-esp32-c6/releases)
+**Оглавление**
+
+- [Компоненты и схема подключения](#компоненты-и-схема-подключения)
+- [Прошивка](#прошивка)
+- [Подключение к Алисе](#подключение-к-алисе)
+- [Индикация](#индикация)
+- [Диагностика через браузер](#диагностика-через-браузер)
+- [Настройки](#настройки)
+- [Основа проекта](#основа-проекта)
+- [Ссылки проекта](#ссылки-проекта)
 
 Датчик температуры воды на ESP32-C6 SuperMini и DS18B20 с прямым Zigbee-подключением к Яндекс Станции Миди. Wi-Fi, MQTT и отдельный сервер не требуются.
 
