@@ -1,7 +1,7 @@
 export const PROJECT='alice_zigbee_aquarium_thermometer';
 export function appIdentity(data) {
  const view=new DataView(data.buffer,data.byteOffset,data.byteLength);
- if(data.length<112 || view.getUint32(32,true)!==0xabcd5432)throw new Error('Не удалось распознать описание прошивки. Обновление остановлено без записи. Скачайте журнал прошивки для диагностики.');
+ if(data.length<112 || view.getUint32(32,true)!==0xabcd5432)throw new Error('Не удалось распознать описание прошивки. Обновление остановлено без записи. Проверьте, что на плате установлена прошивка этого проекта.');
  const text=(start)=>new TextDecoder().decode(data.slice(start,start+32)).split('\0')[0];
  return {version:text(48),project:text(80)};
 }

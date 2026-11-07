@@ -270,7 +270,7 @@ function renderUpdateEntry() {
  const button=$('update-open');if(!button)return;
  const version=s=>/^\d+\.\d+(?:\.\d+)?$/.test(s||'')?s.split('.').map(Number):null;
  const current=version(last?.firmware),latest=version(latestFirmware);
- let newer=!!current && !!latest; // Preview: allow reinstalling the current release.
+ let newer=false;
  if(current&&latest)for(let i=0;i<3;i++){if((latest[i]||0)!==(current[i]||0)){newer=(latest[i]||0)>(current[i]||0);break;}}
  const card=$('update-card');
  if(card)card.hidden=!(port && newer && !connecting);
@@ -291,9 +291,8 @@ async function openInstaller(mode) {
 $('install-open')?.addEventListener('click',()=>openInstaller('initial'));
 $('update-open')?.addEventListener('click',()=>openInstaller('update'));
 $('install-close')?.addEventListener('click',()=>$('install-dialog').close());
-function traceInstaller(message){document.dispatchEvent(new CustomEvent('installer-trace',{detail:message}));}
 async function finishInstallation(event){
- const installStatus=text=>{ $('install-status').textContent=text;traceInstaller(text); };
+ const installStatus=text=>{ $('install-status').textContent=text; };
  if(!event.detail?.restarted){
   installStatus('Прошивка установлена. Перезапуск не выполнен. Переподключите USB, затем закройте это окно и подключите термометр.');
   return;
@@ -306,16 +305,16 @@ async function finishInstallation(event){
   const candidates=ports.filter(candidate=>{const info=candidate.getInfo();return info.usbVendorId===0x303a&&info.usbProductId===0x1001;});
   const selected=candidates.includes(event.detail.port)?event.detail.port:candidates.length===1?candidates[0]:null;
   if(!selected)throw new Error('Порт не найден однозначно');
-  traceInstaller('Автоподключение после освобождения USB');
+
   installStatus('Прошивка установлена. Подключаем термометр…');
   await connect(selected);
   if(!port||!last)throw new Error('Нет ответа термометра');
-  traceInstaller('Автоподключение подтверждено USB-диагностикой');
+
   installStatus('Прошивка установлена. Термометр подключён.');
   $('install-dialog').close();
   notice('');
  }catch(error){
-  traceInstaller('Автоподключение не завершено: '+error.message);
+
   notice('');
   installStatus('Прошивка установлена. Не удалось подключиться автоматически. Переподключите USB, затем закройте это окно и нажмите «Подключить термометр».');
  }
