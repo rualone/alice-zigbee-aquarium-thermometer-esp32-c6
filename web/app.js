@@ -161,6 +161,7 @@ async function connect(existingPort=null) {
   }
   if(!last) throw new Error("identity");
   connecting=false; notice(""); render();
+  void checkFirmwareUpdate();
   poll=setInterval(()=>send().catch(()=>disconnect("Связь потеряна. Переподключите термометр.")),2000);
   reading.then(()=>{ if(port && !closing) disconnect("USB-соединение закрыто. Подключите термометр заново."); });
  } catch(error) {
@@ -321,4 +322,23 @@ async function finishInstallation(event){
 }
 document.addEventListener?.('firmware-installed',event=>{event.detail.completion=finishInstallation(event);});
 
-if(typeof fetch==='function' && typeof window.location!=='undefined')fetch('firmware/manifest.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(m=>{latestFirmware=m?.version;renderUpdateEntry();}).catch(()=>{});
+let updateCheckPending=null;
+function checkFirmwareUpdate(){
+ if(typeof fetch!=='function'||typeof window.location==='undefined')return Promise.resolve();
+ if(updateCheckPending)return updateCheckPending;
+ updateCheckPending=(async()=>{
+  try{
+   const url=new URL('./firmware/manifest.json',import.meta.url);
+   const response=await fetch(url,{cache:'no-store'});
+   if(!response.ok)throw new Error('manifest');
+   const manifest=await response.json();
+   if(!/^\d+\.\d+(?:\.\d+)?$/.test(manifest?.version||''))throw new Error('version');
+   latestFirmware=manifest.version;
+   renderUpdateEntry();
+  }catch{
+   if(port)toast('Не удалось проверить обновления. Обновите страницу и попробуйте снова.');
+  }finally{updateCheckPending=null;}
+ })();
+ return updateCheckPending;
+}
+void checkFirmwareUpdate();

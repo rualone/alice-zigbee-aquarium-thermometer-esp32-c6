@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 const nodes=new Map();
 function element(id){if(!nodes.has(id))nodes.set(id,{id,hidden:false,textContent:'',classList:{add(){},remove(){}},handlers:{},addEventListener(event,fn){this.handlers[event]=fn;},querySelector(selector){return element(id+selector);},setAttribute(){},append(){},click(){},remove(){},showModal(){},close(){}});return nodes.get(id);}
 globalThis.document={getElementById:element,querySelectorAll:()=>[],createElement:()=>element('download-link'),body:{append(){}}};
-globalThis.window={isSecureContext:true};
+globalThis.window={isSecureContext:true,location:{href:'https://example.com/project/'}};
+let availableVersion='0.4';
+globalThis.fetch=async url=>{assert.match(String(url),/firmware\/manifest.json$/);return {ok:true,async json(){return {version:availableVersion};}};};
 let resolveRead;let queue=[];let closed=false;let cancelled=false;
 const snapshot={device:'alice-zigbee-aquarium-thermometer',protocol:1,type:'snapshot',firmware:'0.2',uptime_ms:5000,reset_reason:1,probe:'ok',temperature_c:27.25,measurement_age_ms:100,probe_errors:0,report_failures:0,zigbee_joined:true,report_age_ms:null,events:[{seq:1,ms:0,message:'Started'}]};
 const reader={read(){if(queue.length)return Promise.resolve(queue.shift());return new Promise(r=>resolveRead=r);},cancel(){cancelled=true;if(resolveRead){resolveRead({done:true});resolveRead=null;}return Promise.resolve();},releaseLock(){}};
@@ -27,4 +29,19 @@ test('connects only after matching USB response, renders real value, exports rep
  await element('disconnect').handlers.click();
  assert.ok(cancelled);assert.ok(closed);
  assert.equal(element('connected-view').hidden,true);
+});
+
+test('update entry uses the actual board version and refreshes manifest on connection',async()=>{
+ snapshot.firmware='0.3';availableVersion='0.4';
+ await element('connect').handlers.click();
+ await new Promise(resolve=>setTimeout(resolve,0));
+ assert.equal(element('firmware').textContent,'0.3');
+ assert.equal(element('update-card').hidden,false);
+ assert.equal(element('update-open').title,'Установить версию 0.4');
+ await element('disconnect').handlers.click();
+ snapshot.firmware='0.4';
+ await element('connect').handlers.click();
+ await new Promise(resolve=>setTimeout(resolve,0));
+ assert.equal(element('update-card').hidden,true);
+ await element('disconnect').handlers.click();
 });
