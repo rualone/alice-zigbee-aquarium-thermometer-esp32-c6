@@ -79,3 +79,8 @@ export async function writeAndVerify(loader,parts,data,onProgress=()=>{},onStage
  }
  onProgress(100);
 }
+
+export async function restartThermometer(loader) {
+ // 0.7.1 HardReset only deasserts RTS; explicitly assert reset first.
+ await loader.after('custom_reset',false,'D0|R1|W100|R0|W200|D0');
+}

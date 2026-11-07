@@ -1109,3 +1109,14 @@ tick positions are calculated from the thumb radius in app.js. */
 /* Centre the reading itself; the unit does not contribute to its width. */
 .temperature{display:block;position:relative;width:max-content;max-width:calc(100% - 72px);margin-inline:auto}
 .temperature .unit{position:absolute;left:calc(100% + 9px);bottom:0.18em;white-space:nowrap}
+
+/* Connection assistance: warning and unsupported-browser error. */
+.help-card { background:#faf6e9; }
+.help-card h3 { color:#705300; }
+.help-card p,.help-card .text-button { color:#786124; }
+.help-card .help-symbol { color:#916b00;border-color:#c8a74b; }
+.help-card.browser-error { background:#ffedea; }
+.browser-error h3 { color:#922d27; }
+.browser-error p { color:#8b4943; }
+.browser-error .help-symbol { color:#b53c32;border-color:#cf827a; }
+.browser-error[hidden] { display:none; }

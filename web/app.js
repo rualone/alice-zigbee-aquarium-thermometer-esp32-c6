@@ -59,14 +59,14 @@ const supported = window.isSecureContext && "serial" in navigator;
 function toast(message) {
  const notification=$("toast");
  // A modal dialog lives in the browser top layer. Keep its notifications inside it.
- const modal=document.querySelector?.('dialog[open]');
+ const modal=[...(document.querySelectorAll?.('dialog[open]')||[])].at(-1);
  (modal || document.body).append(notification);
  notification.textContent=message;
  notification.classList.add("show");
  clearTimeout(toastTimer);
  toastTimer=setTimeout(()=>notification.classList.remove("show"),5000);
 }
-function notice(text) { $("connection-notice").textContent=text; $("connection-notice").hidden=!text; }
+function notice(text) { if(text) toast(text); }
 function button() { $("connect").disabled=connecting || !supported; $("connect").querySelector("span").textContent=connecting ? "Ищем термометр…" : "Подключить термометр"; }
 function render() {
  const live = !!port && !!last && !connecting && !closing;
@@ -164,9 +164,7 @@ async function connect(existingPort=null) {
   poll=setInterval(()=>send().catch(()=>disconnect("Связь потеряна. Переподключите термометр.")),2000);
   reading.then(()=>{ if(port && !closing) disconnect("USB-соединение закрыто. Подключите термометр заново."); });
  } catch(error) {
-  let message=error.name==="NotFoundError" ? "Подключение отменено. Вы можете выбрать термометр ещё раз." :
-   error.message==="identity" ? "Устройство не ответило как наш термометр. Проверьте порт и установите прошивку с USB-диагностикой." :
-   error.name==="NetworkError" || error.name==="InvalidStateError" ? "Не удалось открыть USB-порт. Закройте монитор VS Code и другие программы, использующие термометр." : "Не удалось подключиться. Проверьте USB-кабель и разрешение браузера.";
+  const message=error.name==='NotFoundError' ? '' : 'Не удалось подключить термометр. Проверьте USB-кабель, разрешите подключение в браузере и убедитесь, что устройство не используется другой программой.';
   if(port) await disconnect(message); else { connecting=false; notice(message); render(); }
  }
 }
@@ -182,7 +180,7 @@ $("help").addEventListener("click",()=>$("help-dialog").showModal());
 document.querySelectorAll(".dialog-close,.dialog-done").forEach(b=>b.addEventListener("click",()=>$("help-dialog").close()));
 if(supported) navigator.serial.addEventListener("disconnect",event=>{if(event.target===port) disconnect("Кабель отключён. Подключите термометр заново.");});
 setInterval(render,1000);
-if(!supported) notice("Этот браузер не поддерживает USB-подключение на этой странице. Откройте её в Chrome на компьютере по HTTPS или через localhost.");
+if($('browser-error')) $('browser-error').hidden=supported;
 render();
 
 if($('settings-form')) {
@@ -205,7 +203,7 @@ if($('settings-form')) {
    if(ok){last.settings={...value};settingsDirty=false;await send();}
    toast(ok ? 'Настройки сохранены' : 'Сохранение не подтверждено. Переподключитесь и проверьте значения.');
   } catch {if(settingsPending)settingsPending(false);toast('Не удалось сохранить настройки. Проверьте USB-подключение.');}
-  finally {if(port && !closing)poll=setInterval(()=>send().catch(()=>disconnect()),2000);render();}
+  finally {if(port && !closing)poll=setInterval(()=>send().catch(()=>disconnect("Связь потеряна. Переподключите термометр.")),2000);render();}
  });
 }
 
@@ -294,11 +292,34 @@ $('install-open')?.addEventListener('click',()=>openInstaller('initial'));
 $('update-open')?.addEventListener('click',()=>openInstaller('update'));
 $('install-close')?.addEventListener('click',()=>$('install-dialog').close());
 function traceInstaller(message){document.dispatchEvent(new CustomEvent('installer-trace',{detail:message}));}
-document.addEventListener?.('firmware-installed',()=>{
- traceInstaller('Контрольный тест: автоподключение отключено');
- $('install-dialog').close();
- traceInstaller('Модальное окно закрыто');
- notice('Прошивка записана и проверена. Отключите USB-кабель и подключите его снова, затем нажмите «Подключить термометр».');
-});
+async function finishInstallation(event){
+ const installStatus=text=>{ $('install-status').textContent=text;traceInstaller(text); };
+ if(!event.detail?.restarted){
+  installStatus('Прошивка установлена. Перезапуск не выполнен. Переподключите USB, затем закройте это окно и подключите термометр.');
+  return;
+ }
+ installStatus('Прошивка установлена. Ждём перезапуска термометра…');
+ try{
+  // The installer dispatches only after releasing its reader and closing the port.
+  await new Promise(resolve=>setTimeout(resolve,3000));
+  const ports=await navigator.serial.getPorts();
+  const candidates=ports.filter(candidate=>{const info=candidate.getInfo();return info.usbVendorId===0x303a&&info.usbProductId===0x1001;});
+  const selected=candidates.includes(event.detail.port)?event.detail.port:candidates.length===1?candidates[0]:null;
+  if(!selected)throw new Error('Порт не найден однозначно');
+  traceInstaller('Автоподключение после освобождения USB');
+  installStatus('Прошивка установлена. Подключаем термометр…');
+  await connect(selected);
+  if(!port||!last)throw new Error('Нет ответа термометра');
+  traceInstaller('Автоподключение подтверждено USB-диагностикой');
+  installStatus('Прошивка установлена. Термометр подключён.');
+  $('install-dialog').close();
+  notice('');
+ }catch(error){
+  traceInstaller('Автоподключение не завершено: '+error.message);
+  notice('');
+  installStatus('Прошивка установлена. Не удалось подключиться автоматически. Переподключите USB, затем закройте это окно и нажмите «Подключить термометр».');
+ }
+}
+document.addEventListener?.('firmware-installed',event=>{event.detail.completion=finishInstallation(event);});
 
 if(typeof fetch==='function' && typeof window.location!=='undefined')fetch('firmware/manifest.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(m=>{latestFirmware=m?.version;renderUpdateEntry();}).catch(()=>{});

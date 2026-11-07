@@ -1,4 +1,4 @@
-import {validateManifest,validateUpdate,writeAndVerify,readFlashBounded} from './installer-core.js?v=071-c6-address-1';
+import {validateManifest,validateUpdate,writeAndVerify,restartThermometer,readFlashBounded} from './installer-core.js?v=071-modal-connect-1';
 const $=id=>document.getElementById(id);
 let busy=false;
 const TRACE_KEY='aquarium-installer-trace';
@@ -50,7 +50,7 @@ async function install(){
  const initial=$('install-mode').value==='initial';
  if(initial && (!$('install-consent').checked || [...document.querySelectorAll('.assembly-check')].some(c=>!c.checked))){status('Подтвердите первую установку и удаление прежних данных.');return;}
  trace('Начало установки');
- let transport,loader,selectedPort,success=false;
+ let transport,loader,selectedPort,success=false,restarted=false;
  busy=true;if($('install-close'))$('install-close').disabled=true;$('install-start').disabled=true;$('install-mode').disabled=true;$('install-consent').disabled=true;progress(0);
  try{
   // Picker must be called directly from the user's click, before asynchronous downloads.
@@ -86,17 +86,31 @@ async function install(){
   status('Записываем прошивку. Не отключайте USB…');
   await writeAndVerify(loader,parts,data,progress,stage=>status(stage==='write'
    ? 'Записываем прошивку. Не отключайте USB…' : 'Проверяем записанные данные…'));
-  trace('Запись проверена; запуск после переподключения USB');
   success=true;
+  status('Прошивка установлена и проверена. Перезапускаем термометр…');
+  try{
+   trace('Начало аппаратного сброса через API 0.7.1');
+   await restartThermometer(loader);
+   restarted=true;
+   trace('Аппаратный сброс выполнен');
+  }catch(error){trace('Запись успешна, сброс не выполнен: '+(error.stack||error));}
   progress(100);
-  status('Прошивка '+manifest.version+' записана и проверена. Переподключите USB-кабель для запуска термометра.');
+  status(restarted?'Прошивка '+manifest.version+' установлена. Подключаем термометр…':'Прошивка записана и проверена. Переподключите USB-кабель для запуска термометра.');
  }catch(error){
   trace('Ошибка установки: '+(error.stack||error));
   status(error.name==='NotFoundError'?'Выбор платы отменён.':error.message?.includes('Failed to open')?'Порт занят. Отключите термометр на странице диагностики и закройте монитор VS Code.':error.message || 'Не удалось прошить плату. Проверьте USB-кабель и попробуйте режим BOOT.');
  }finally{
   if(transport){try{trace('Закрываем USB transport');await transport.disconnect();trace('USB transport закрыт');}catch{trace('Ошибка закрытия USB transport');}}
+  if(success){
+   const detail={port:selectedPort,restarted};
+   try{
+    trace('Передаём событие завершения');
+    document.dispatchEvent(new CustomEvent('firmware-installed',{detail}));
+    await detail.completion;
+    trace('Событие завершения обработано');
+   }catch(error){trace('Ошибка завершения подключения: '+(error.stack||error));status('Прошивка установлена. Переподключите USB и подключите термометр вручную.');}
+  }
   busy=false;if($('install-close'))$('install-close').disabled=false;
-  if(success){trace('Передаём событие завершения');document.dispatchEvent(new CustomEvent('firmware-installed',{detail:{port:selectedPort}}));trace('Событие завершения обработано');}
   $('install-mode').disabled=false;$('install-consent').disabled=false;
   updateInstallButton();
  }

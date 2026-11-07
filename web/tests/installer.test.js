@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {PROJECT,appIdentity,validateUpdate,validateManifest,flashFiles,readFlashBounded,writeAndVerify} from '../installer-core.js';
+import {PROJECT,appIdentity,validateUpdate,validateManifest,flashFiles,readFlashBounded,writeAndVerify,restartThermometer} from '../installer-core.js';
 function app(project=PROJECT.slice(0,31),version='0.3') {
  const bytes=new Uint8Array(256);new DataView(bytes.buffer).setUint32(32,0xabcd5432,true);
  bytes.set(new TextEncoder().encode(version),48);bytes.set(new TextEncoder().encode(project),80);return bytes;
@@ -53,4 +53,11 @@ test('write failures stop verification; mismatch rejects; success reaches 100 on
  loader.writeFlash=async()=>{throw new Error('USB lost');};
  loader.flashMd5sum=async()=>assert.fail('must not verify after write error');
  await assert.rejects(()=>writeAndVerify(loader,[part],data),/USB lost/);
+});
+
+test('restart explicitly pulses reset rather than only releasing RTS',async()=>{
+ const calls=[];
+ await restartThermometer({async after(...args){calls.push(args);}});
+ assert.deepEqual(calls,[['custom_reset',false,'D0|R1|W100|R0|W200|D0']]);
+ await assert.rejects(()=>restartThermometer({async after(){throw new Error('USB lost');}}),/USB lost/);
 });
