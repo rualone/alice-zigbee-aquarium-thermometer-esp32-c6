@@ -11,3 +11,5 @@
 .env.*
 !.env.example
 .vscode/settings.json
+
+/web/firmware/

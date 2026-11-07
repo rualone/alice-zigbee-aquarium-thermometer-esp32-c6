@@ -2,6 +2,7 @@ import {parseFrame, duration, report, eventText} from "./protocol.js";
 const $ = id => document.getElementById(id);
 let port = null, reader = null, reading = null, poll = null, last = null, received = 0, capturedAt = null;
 let activeWriter = null;
+let latestFirmware=null;
 let settingsPending = null, settingsDirty = false, settingsLoaded = false;
 const brightnessLevels=[0,1,25,100,255];
 const brightnessNames=['Отключена','Минимальная','Средняя','Высокая','Звездная'];
@@ -70,6 +71,7 @@ function button() { $("connect").disabled=connecting || !supported; $("connect")
 function render() {
  const live = !!port && !!last && !connecting && !closing;
  $("disconnected-view").hidden=live; $("connected-view").hidden=!live;
+ $("technical").hidden=!live;
  const stale = live && Date.now()-received>10000;
  const oldMeasure = live && last.measurement_age_ms !== null && last.measurement_age_ms+Date.now()-received>Math.max(30000,(last.sample_interval_ms || 5000)*2+2000);
  const error = live && (last.probe!=="ok" || stale || oldMeasure);
@@ -102,6 +104,7 @@ function render() {
   renderCalibration();
   updateSettingsButton();
  }
+ renderUpdateEntry();
  button();
 }
 function logs() {
@@ -145,11 +148,11 @@ async function disconnect(message="Термометр отключён.") {
  catch { /* A removed USB device may already be closed. */ }
  finally { port=null; reading=null; connecting=false; closing=false; notice(message); render(); }
 }
-async function connect() {
+async function connect(existingPort=null) {
  if(connecting || port) return;
  connecting=true; calibrationRaw=null; settingsDirty=false; settingsLoaded=false; last=null; hiddenBefore=-1; notice(""); render();
  try {
-  const selected=await navigator.serial.requestPort({filters:[{usbVendorId:0x303a,usbProductId:0x1001}]});
+  const selected=existingPort?.open ? existingPort : await navigator.serial.requestPort({filters:[{usbVendorId:0x303a,usbProductId:0x1001}]});
   await selected.open({baudRate:115200}); port=selected;
   reading=readLoop(selected);
   const started=Date.now();
@@ -263,3 +266,39 @@ for(const dialog of document.querySelectorAll('dialog')) {
   if(notification.parentElement===dialog)document.body.append(notification);
  });
 }
+
+
+function renderUpdateEntry() {
+ const button=$('update-open');if(!button)return;
+ const version=s=>/^\d+\.\d+(?:\.\d+)?$/.test(s||'')?s.split('.').map(Number):null;
+ const current=version(last?.firmware),latest=version(latestFirmware);
+ let newer=!!current && !!latest; // Preview: allow reinstalling the current release.
+ if(current&&latest)for(let i=0;i<3;i++){if((latest[i]||0)!==(current[i]||0)){newer=(latest[i]||0)>(current[i]||0);break;}}
+ const card=$('update-card');
+ if(card)card.hidden=!(port && newer && !connecting);
+ button.hidden=false;
+ if(newer){
+  button.textContent='Обновить';
+  button.title='Установить версию '+latestFirmware;
+ }
+}
+async function openInstaller(mode) {
+ if(mode==='update')await disconnect('');
+ $('install-mode').value=mode;
+ $('install-mode').dispatchEvent(new Event('change'));
+ $('install-title').textContent=mode==='initial'?'Установка прошивки':'Обновление прошивки';
+ $('install-explanation').textContent=mode==='initial'?'Проверьте сборку при отключённом USB, затем подключите плату. Установим последнюю доступную версию.':'Обновление сохраняет настройки и Zigbee-привязку. Выберите ту же плату в окне браузера.';
+ $('install-dialog').showModal();
+}
+$('install-open')?.addEventListener('click',()=>openInstaller('initial'));
+$('update-open')?.addEventListener('click',()=>openInstaller('update'));
+$('install-close')?.addEventListener('click',()=>$('install-dialog').close());
+function traceInstaller(message){document.dispatchEvent(new CustomEvent('installer-trace',{detail:message}));}
+document.addEventListener?.('firmware-installed',()=>{
+ traceInstaller('Контрольный тест: автоподключение отключено');
+ $('install-dialog').close();
+ traceInstaller('Модальное окно закрыто');
+ notice('Прошивка записана и проверена. Отключите USB-кабель и подключите его снова, затем нажмите «Подключить термометр».');
+});
+
+if(typeof fetch==='function' && typeof window.location!=='undefined')fetch('firmware/manifest.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(m=>{latestFirmware=m?.version;renderUpdateEntry();}).catch(()=>{});

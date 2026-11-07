@@ -1040,3 +1040,72 @@ tick positions are calculated from the thumb radius in app.js. */
     font-size:25px;
   }
 }
+
+
+/* Browser firmware installation */
+.install-entry{align-self:center;margin:16px 0 0;color:#416956;font-size:11px}
+.firmware-value{display:flex;align-items:center;gap:4px}.firmware-value .settings-trigger{width:30px;height:30px}
+#install-dialog{max-width:780px;padding:0;border-radius:32px;background:#f8faf6;overflow:auto;scrollbar-width:thin}
+.flash-header{display:block;position:relative;padding:28px 32px 20px;margin:0;max-width:none}
+.flash-symbol{display:grid;place-items:center;width:48px;height:48px;border-radius:18px;background:#dcebdc;color:#315e46;margin-bottom:18px}
+.flash-symbol svg{width:26px;height:26px}
+#install-dialog h2{font-size:28px;line-height:1.2;letter-spacing:-.8px;margin:0 44px 12px 0}
+#install-dialog .flash-header p{font-size:13px;line-height:1.7;margin:0;max-width:590px;color:#65766b}
+.install-body{display:flex;flex-direction:column;gap:16px;padding:0 32px 20px}
+.flash-wiring{margin:0 0 18px;background:#eaf1e7;border-radius:24px;padding:20px}
+.flash-wiring figcaption,.flash-section-title{display:flex;align-items:center;gap:12px}
+.flash-wiring figcaption>span,.flash-section-title>span{display:grid;place-items:center;flex-shrink:0;width:32px;height:32px;border-radius:12px;background:#d2e3d1;color:#3d644a;font-size:11px;font-weight:600}
+#install-dialog h3{font-size:14px;line-height:1.5;font-weight:600;margin:0}
+#install-dialog figcaption p{font-size:11px;line-height:1.6;margin:4px 0 0;color:#627663}
+.wiring-preview{display:block;width:100%;height:auto;margin:16px 0 8px}
+#install-dialog .wiring-caption{font-size:11px;line-height:1.6;color:#627663;margin:0;text-align:center}
+.flash-confirm{padding:4px 0 0}
+.install-checklist{display:grid;gap:3px;margin:14px 0}
+.install-checklist label,.flash-consent{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:16px;background:#edf2e9;cursor:pointer}
+.install-checklist label:hover{background:#e4eddf}
+.install-checklist label:has(input:checked){background:#dfeedd}
+#install-dialog input[type=checkbox]{appearance:none;-webkit-appearance:none;position:relative;flex-shrink:0;box-sizing:border-box;width:20px;height:20px;margin:0;border:2px solid #6e8072;border-radius:3px;background:transparent;display:grid;place-items:center;cursor:pointer;transition:background-color .15s,border-color .15s,box-shadow .15s}
+#install-dialog input[type=checkbox]::after{content:"";display:block;width:14px;height:14px;background:white;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='m9 16.17-4.17-4.17L3.41 13.41 9 19 21 7l-1.41-1.41z'/%3E%3C/svg%3E") center/contain no-repeat;opacity:0;transform:scale(.65);transition:opacity .12s,transform .16s}
+#install-dialog input[type=checkbox]:checked{background:#315e46;border-color:#315e46}
+#install-dialog input[type=checkbox]:checked::after{opacity:1;transform:scale(1)}
+#install-dialog label:hover input[type=checkbox]{box-shadow:0 0 0 9px #315e4610}
+#install-dialog input[type=checkbox]:focus-visible{outline:0;box-shadow:0 0 0 9px #315e4624}
+#install-dialog input[type=checkbox]:disabled{opacity:.38;cursor:default}
+#install-dialog label strong{display:block;font-size:12px;line-height:1.5;font-weight:600;color:#34513d}
+#install-dialog label small{display:block;font-size:11px;line-height:1.6;color:#6b7b6c;margin-top:3px}
+.flash-consent{background:#f4eadc;align-items:flex-start;margin-top:12px}
+#install-dialog .flash-consent input{margin-top:3px}
+#install-dialog .flash-consent strong{color:#715735}
+.flash-process{padding:18px 20px;background:#e9f0e6;border-radius:22px}
+.flash-process-top{display:flex;align-items:center;gap:9px;margin-bottom:14px}
+.flash-process-icon{color:#426d50;font-size:20px}
+#install-percent{margin-left:auto;font-size:12px;font-weight:600;color:#426d50}
+#install-progress{display:block;appearance:none;width:100%;height:8px;border:0;border-radius:8px;overflow:hidden;background:#d4e0cf;accent-color:#416d50}
+#install-progress::-webkit-progress-bar{background:#d4e0cf;border-radius:8px}
+#install-progress::-webkit-progress-value{background:#416d50;border-radius:8px;transition:width .2s}
+#install-progress::-moz-progress-bar{background:#416d50;border-radius:8px}
+#install-dialog #install-status{font-size:12px;line-height:1.7;margin:12px 0 0;color:#536c58}
+.flash-help{padding:0 4px;color:#65766b}
+.flash-help summary{font-size:12px;cursor:pointer;padding:8px 0}
+#install-dialog .flash-help p{font-size:12px;line-height:1.7;margin:8px 0}
+.flash-actions{display:flex;align-items:center;gap:20px;position:sticky;bottom:0;padding:18px 32px 24px;border-top:1px solid #e4ebe0;background:#f8faf6}
+.flash-actions>span{font-size:11px;color:#7a8a7c;white-space:nowrap}
+#install-dialog .flash-actions .primary{margin:0 0 0 auto;width:auto;min-width:240px;border-radius:28px;min-height:52px;padding:16px 24px}
+#install-dialog .settings-close:disabled{opacity:.4;cursor:default}
+@media(max-width:600px){.flash-header{padding:24px 20px 18px}.install-body{padding:0 16px 16px}.flash-wiring{padding:16px 12px}.flash-actions{padding:16px;gap:0}.flash-actions>span{display:none}#install-dialog .flash-actions .primary{width:100%}#install-dialog h2{font-size:25px}}
+
+#install-dialog .flash-header{position:sticky;top:0;z-index:2;background:#f8faf6;border-bottom:1px solid #e4ebe0;padding:24px 32px 20px}#install-dialog .flash-actions{z-index:2}#install-dialog .flash-header h2{margin-top:0}@media(max-width:600px){#install-dialog .flash-header{padding:22px 20px 18px}}
+
+#install-dialog .install-body{padding-top:20px}#install-dialog #install-explanation{font-size:13px;line-height:1.7;margin:0;color:#65766b}
+
+.flash-confirm .install-checklist{gap:8px;margin:16px 0 0}.flash-confirm .flash-consent{margin-top:8px}.flash-confirm .install-checklist label,.flash-confirm .flash-consent{padding:14px 16px}
+
+.firmware-inline{display:flex;align-items:baseline;gap:6px;margin-top:7px;white-space:nowrap}.metrics .firmware-inline strong{margin:0}.metrics #update-card{display:inline-flex;align-items:baseline;gap:6px;margin:0;font-size:12px}.metrics .firmware-divider{display:inline;margin:0;font-size:12px;color:#8a9b8a}.firmware-inline button{font:inherit;font-size:11px;font-weight:500;color:#315e46;background:none;border:0;padding:0;cursor:pointer;line-height:inherit}.firmware-inline button:hover{text-decoration:underline}
+
+.firmware-inline button{font-size:12px;font-weight:550;letter-spacing:normal;line-height:inherit}.metrics .firmware-divider{font-size:14px;font-weight:700;color:#647268}
+
+.firmware-inline,.metrics #update-card{gap:3px}
+
+/* Centre the reading itself; the unit does not contribute to its width. */
+.temperature{display:block;position:relative;width:max-content;max-width:calc(100% - 72px);margin-inline:auto}
+.temperature .unit{position:absolute;left:calc(100% + 9px);bottom:0.18em;white-space:nowrap}

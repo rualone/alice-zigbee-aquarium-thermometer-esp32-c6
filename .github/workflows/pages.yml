@@ -5,6 +5,12 @@ on:
     branches: [main]
     paths:
       - "web/**"
+      - "main/**"
+      - "scripts/**"
+      - "CMakeLists.txt"
+      - "sdkconfig.defaults"
+      - "partitions.csv"
+      - "dependencies.lock"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -18,7 +24,24 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  firmware:
+    runs-on: ubuntu-latest
+    container: espressif/idf:v6.1
+    steps:
+      - uses: actions/checkout@v4
+      - name: Сборка прошивки для браузера
+        shell: bash
+        run: |
+          . "$IDF_PATH/export.sh"
+          idf.py set-target esp32c6
+          idf.py build
+          python scripts/package_web_firmware.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: browser-firmware
+          path: web/firmware/
   deploy:
+    needs: firmware
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -30,11 +53,16 @@ jobs:
           node-version: "22"
       - name: Проверка страницы
         run: node --test web/tests/*.test.js
+      - uses: actions/download-artifact@v4
+        with:
+          name: browser-firmware
+          path: web/firmware
       - uses: actions/configure-pages@v5
       - name: Подготовка файлов сайта
         run: |
           mkdir -p _site
-          cp web/index.html web/styles.css web/app.js web/protocol.js _site/
+          cp web/*.html web/*.css web/*.js _site/
+          cp -R web/firmware _site/firmware
           cp -R web/assets _site/assets
       - uses: actions/upload-pages-artifact@v3
         with:
