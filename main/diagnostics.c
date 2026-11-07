@@ -96,6 +96,7 @@ static void snapshot(void)
     if (!root) return;
     cJSON_AddStringToObject(root, "device", "alice-zigbee-aquarium-thermometer");
     cJSON_AddNumberToObject(root, "protocol", 1);
+    cJSON_AddBoolToObject(root, "settings_reset", true);
     cJSON_AddStringToObject(root, "type", "snapshot");
     cJSON_AddStringToObject(root, "firmware", esp_app_get_description()->version);
     cJSON_AddNumberToObject(root, "uptime_ms", uptime_ms());
@@ -175,6 +176,13 @@ static void usb_task(void *arg)
             line[used] = 0;
             if (!discard && strcmp(line, "AQ1 SNAPSHOT") == 0) snapshot();
             else if (!discard && strncmp(line,"AQ1 SETTINGS ",13)==0) configure(line+13);
+            else if (!discard && strcmp(line, "AQ1 RESET_SETTINGS") == 0) {
+                esp_err_t err = settings_reset();
+                diagnostics_event(err == ESP_OK ? "Settings reset" : "Settings reset failed");
+                printf("\n@AQSET {\"ok\":%s}\n", err == ESP_OK ? "true" : "false");
+                fflush(stdout);
+                snapshot();
+            }
             used = 0; discard = false;
         } else if (used < sizeof(line) - 1 && !discard) line[used++] = ch;
         else discard = true;

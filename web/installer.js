@@ -8,7 +8,17 @@ function updateInstallButton(){
  $('install-start').disabled=busy || !supported || (initial && !confirmed);
 }
 
-function status(text){$('install-status').textContent=text;}
+function status(text){
+ const target=$('install-status');
+ const parts=text.split('«Мой аквариум»');
+ target.textContent=parts.shift();
+ for(const suffix of parts){
+  const link=document.createElement('a');
+  link.href='https://rualone.github.io/alice-zigbee-aquarium-thermometer-esp32-c6/';
+  link.textContent='«Мой аквариум»';
+  target.append(link,document.createTextNode(suffix));
+ }
+}
 function progress(value){$('install-progress').value=value;if($('install-percent'))$('install-percent').textContent=value+'%';}
 async function download(part){
  const response=await fetch('firmware/'+part.path,{cache:'no-store'});
@@ -81,7 +91,7 @@ async function install(){
   status(restarted?'Прошивка '+manifest.version+' установлена. Подключаем термометр…':'Прошивка записана и проверена. Переподключите USB-кабель для запуска термометра.');
  }catch(error){
 
-  status(error.name==='NotFoundError'?'Выбор платы отменён.':error.message?.includes('Failed to open')?'Порт занят. Отключите термометр на странице диагностики и закройте монитор VS Code.':error.message || 'Не удалось прошить плату. Проверьте USB-кабель и попробуйте режим BOOT.');
+  status(error.name==='NotFoundError'?'Выбор платы отменён.':error.message?.includes('Failed to open')?'Порт занят. Отключите термометр на странице «Мой аквариум» и закройте монитор VS Code.':error.message || 'Не удалось прошить плату. Проверьте USB-кабель и попробуйте режим BOOT.');
  }finally{
   if(transport){try{await transport.disconnect();}catch{}}
   if(success){

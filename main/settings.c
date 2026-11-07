@@ -12,11 +12,14 @@ static bool valid(aquarium_settings_t v) {
     return v.brightness >= 0 && v.brightness <= 255 && v.sample_seconds >= 2 && v.sample_seconds <= 3600 &&
         v.report_seconds >= 5 && v.report_seconds <= 3600 && v.delta_centi >= 1 && v.delta_centi <= 1000 && v.offset_centi >= -500 && v.offset_centi <= 500 && v.offset_centi % 10 == 0;
 }
+aquarium_settings_t settings_defaults(void) {
+    return (aquarium_settings_t){CONFIG_AQUARIUM_RGB_BRIGHTNESS, CONFIG_AQUARIUM_SAMPLE_SECONDS,
+        CONFIG_AQUARIUM_REPORT_SECONDS, CONFIG_AQUARIUM_DELTA_CENTI, 0};
+}
 void settings_init(void) {
     mutex = xSemaphoreCreateMutex();
     ESP_ERROR_CHECK(mutex ? ESP_OK : ESP_ERR_NO_MEM);
-    current = (aquarium_settings_t){CONFIG_AQUARIUM_RGB_BRIGHTNESS, CONFIG_AQUARIUM_SAMPLE_SECONDS,
-        CONFIG_AQUARIUM_REPORT_SECONDS, CONFIG_AQUARIUM_DELTA_CENTI, 0};
+    current = settings_defaults();
     nvs_handle_t h;
     esp_err_t err = nvs_open("aq_settings", NVS_READONLY, &h);
     if (err == ESP_ERR_NVS_NOT_FOUND) return;
@@ -51,4 +54,8 @@ esp_err_t settings_save(aquarium_settings_t v) {
     nvs_close(h);
     if(e==ESP_OK){xSemaphoreTake(mutex,portMAX_DELAY);current=v;xSemaphoreGive(mutex);}
     return e;
+}
+
+esp_err_t settings_reset(void) {
+    return settings_save(settings_defaults());
 }

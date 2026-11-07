@@ -5,6 +5,7 @@ function element(id){if(!nodes.has(id))nodes.set(id,{id,hidden:false,value:'',st
 globalThis.document={getElementById:element,querySelectorAll:()=>[],createElement:()=>element('download-link'),body:{append(){}}};
 globalThis.window={isSecureContext:true};
 const sent=[];
+let delaySnapshots=false;
 let resolveRead;let queue=[];let closed=false;let cancelled=false;
 const snapshot={device:'alice-zigbee-aquarium-thermometer',protocol:1,type:'snapshot',firmware:'0.3',raw_temperature_c:27.25,applied_offset_centi:0,sample_interval_ms:5000,settings:{brightness:25,sample_seconds:5,report_seconds:60,delta_centi:20,offset_centi:0},uptime_ms:5000,reset_reason:1,probe:'ok',temperature_c:27.25,measurement_age_ms:100,probe_errors:0,report_failures:0,zigbee_joined:true,report_age_ms:null,events:[{seq:1,ms:0,message:'Started'}]};
 const reader={read(){if(queue.length)return Promise.resolve(queue.shift());return new Promise(r=>resolveRead=r);},cancel(){cancelled=true;if(resolveRead){resolveRead({done:true});resolveRead=null;}return Promise.resolve();},releaseLock(){}};
@@ -14,8 +15,12 @@ if(command.startsWith('AQ1 SETTINGS ')) {
  sent.push(value);snapshot.settings=value;
  const ack={value:new TextEncoder().encode('@AQSET {"ok":true}\n'),done:false};
  if(resolveRead){resolveRead(ack);resolveRead=null;}else queue.push(ack);
+} else if(command==='AQ1 RESET_SETTINGS'){
+ sent.push('reset');snapshot.settings={brightness:1,sample_seconds:5,report_seconds:60,delta_centi:20,offset_centi:0};
+ const ack={value:new TextEncoder().encode('@AQSET {"ok":true}\n'),done:false};
+ if(resolveRead){resolveRead(ack);resolveRead=null;}else queue.push(ack);
 } else assert.equal(command,'AQ1 SNAPSHOT');
-const frame={value:new TextEncoder().encode('ordinary log\n@AQ1 '+JSON.stringify(snapshot)+'\n'),done:false};if(resolveRead){resolveRead(frame);resolveRead=null;}else queue.push(frame);},releaseLock(){},async abort(){}})},async open(options){assert.equal(options.baudRate,115200);},async close(){closed=true;}};
+const frame={value:new TextEncoder().encode('ordinary log\n@AQ1 '+JSON.stringify(snapshot)+'\n'),done:false};const deliver=()=>{if(resolveRead){resolveRead(frame);resolveRead=null;}else queue.push(frame);};if(delaySnapshots)setTimeout(deliver,40);else deliver();},releaseLock(){},async abort(){}})},async open(options){assert.equal(options.baudRate,115200);},async close(){closed=true;}};
 Object.defineProperty(globalThis,'navigator',{configurable:true,value:{serial:{requestPort:async()=>port,addEventListener(){}}}});
 // Avoid background render/poll timers in this simulated-browser test.
 globalThis.setInterval=()=>1;globalThis.clearInterval=()=>{};
@@ -57,5 +62,31 @@ test('settings load before dirty tracking, save on change, and preserve calibrat
  for(let i=0;i<120;i++)element('calibration-minus').handlers.click();
  assert.equal(element('calibration-offset').textContent,'-5,0 °C');
  assert.equal(element('calibration-minus').disabled,true);
+ await element('disconnect').handlers.click();
+});
+
+test('reset is capability gated, requires confirmation and reloads settings without changing pairing',async()=>{
+ snapshot.firmware='0.6';snapshot.settings_reset=true;
+ await element('connect').handlers.click();
+ element('settings-open').handlers.click();
+ assert.equal(element('settings-reset').hidden,false);
+ const before=sent.length;
+ element('settings-reset').handlers.click();
+ assert.equal(element('settings-reset-dialog').open,true);
+ assert.equal(sent.length,before);
+ element('settings-reset-cancel').handlers.click();
+ assert.equal(sent.length,before);
+ element('settings-reset').handlers.click();
+ delaySnapshots=true;
+ await element('settings-reset-confirm').handlers.click();
+ await new Promise(resolve=>setTimeout(resolve,100));
+ delaySnapshots=false;
+ assert.equal(sent.at(-1),'reset');
+ assert.equal(element('settings-reset-dialog').open,false);
+ assert.equal(element('toast').textContent,'Настройки сброшены');
+ assert.equal(element('brightness-description').textContent,'Минимальная');
+ assert.equal(element('calibration-offset').textContent,'0,0 °C');
+ assert.equal(element('settings-save').disabled,true);
+ assert.equal(snapshot.zigbee_joined,true);
  await element('disconnect').handlers.click();
 });

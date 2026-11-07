@@ -44,6 +44,8 @@ export function duration(ms) {
 }
 export function eventText(message) {
  const fixed = {
+  "Settings reset": "Настройки возвращены к значениям по умолчанию.",
+  "Settings reset failed": "Не удалось сбросить настройки.",
   "Settings saved": "Настройки сохранены.",
   "Settings save failed": "Не удалось сохранить настройки.",
   "Device started; diagnostics protocol v1": "Термометр включился и готов к работе.",

@@ -4,3 +4,5 @@ typedef struct { int brightness, sample_seconds, report_seconds, delta_centi, of
 void settings_init(void);
 aquarium_settings_t settings_get(void);
 esp_err_t settings_save(aquarium_settings_t value);
+aquarium_settings_t settings_defaults(void);
+esp_err_t settings_reset(void);

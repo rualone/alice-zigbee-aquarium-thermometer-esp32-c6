@@ -61,7 +61,11 @@ int main(void){
  v.offset_centi=-30;assert(settings_save(v)==0);settings_init();assert(settings_get().offset_centi==-30);
  v.offset_centi=501;assert(settings_save(v)==2);v.offset_centi=11;assert(settings_save(v)==2);
  v.offset_centi=50;fail=1;assert(settings_save(v)!=0);assert(settings_get().offset_centi==-30);fail=0;
- uint32_t future=3;memcpy(stored,&future,4);settings_init();assert(settings_save(v)==3);
+ fail=1;assert(settings_reset()!=0);assert(settings_get().offset_centi==-30);fail=0;
+ assert(settings_reset()==0);settings_init();
+ aquarium_settings_t defaults=settings_get();
+ assert(defaults.brightness==1&&defaults.sample_seconds==5&&defaults.report_seconds==60&&defaults.delta_centi==20&&defaults.offset_centi==0);
+ uint32_t future=3;memcpy(stored,&future,4);settings_init();assert(settings_save(v)==3);assert(settings_reset()==3);
  assert(memcmp(stored,&future,4)==0);
  return 0;
 }

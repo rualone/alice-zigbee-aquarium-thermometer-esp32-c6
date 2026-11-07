@@ -1,8 +1,10 @@
-import {parseFrame, duration, report, eventText, zigbeeBadge, showZigbeeBadge} from "./protocol.js?v=zigbee-05-visible-5";
+import {openDialog,closeDialog} from "./dialogs.js?v=modal-motion-2";
+import {parseFrame, duration, report, eventText, zigbeeBadge, showZigbeeBadge} from "./protocol.js?v=settings-06-fixes-2";
 const $ = id => document.getElementById(id);
 let port = null, reader = null, reading = null, poll = null, last = null, received = 0, capturedAt = null;
 let activeWriter = null;
 let latestFirmware=null;
+let settingsResetPending=false, resetSnapshotExpected=false;
 let settingsPending = null, settingsDirty = false, settingsLoaded = false;
 const brightnessLevels=[0,1,25,100,255];
 const brightnessNames=['Отключена','Минимальная','Средняя','Высокая','Звездная'];
@@ -52,6 +54,10 @@ function formSettings() {
 function updateSettingsButton() {
  const value=formSettings();
  settingsDirty=settingsLoaded && !!last?.settings && Object.keys(value).some(key=>value[key]!==last.settings[key]);
+ if($('settings-reset')){
+  $('settings-reset').hidden=last?.settings_reset!==true;
+  $('settings-reset').disabled=!!settingsPending || !port || connecting || closing || Date.now()-received>10000;
+ }
  $('settings-save').disabled=!settingsDirty || !!settingsPending || !port || connecting || closing || Date.now()-received>10000;
 }
 let connecting = false, closing = false, hiddenBefore = -1, toastTimer;
@@ -99,7 +105,7 @@ function render() {
  const settingsAvailable=live && !!last.settings && /^(?:0\.(?:[3-9]|[1-9]\d)|[1-9]\d*\.)/.test(last.firmware);
  if(panel) {
   $('settings-open').hidden=!settingsAvailable;
-  if(!settingsAvailable && panel.open) panel.close();
+  if(!settingsAvailable && panel.open) closeDialog(panel);
   if(settingsAvailable && (!settingsLoaded || (!settingsDirty && !settingsPending && !panel.open))) {
    showBrightness(last.settings.brightness);
    updateStepSlider('sample',last.settings.sample_seconds,true);
@@ -135,11 +141,12 @@ async function readLoop(activePort) {
    while((index=buffer.indexOf("\n"))>=0) {
     const line=buffer.slice(0,index).trim(); buffer=buffer.slice(index+1);
     if(line.startsWith("@AQSET ") && settingsPending) {
-     try { const ack=JSON.parse(line.slice("@AQSET ".length)); settingsPending(ack.ok===true); } catch {}
+     try { const ack=JSON.parse(line.slice("@AQSET ".length)); if(ack.ok===true && settingsResetPending)resetSnapshotExpected=true; settingsPending(ack.ok===true); } catch {}
      continue;
     }
     const frame=parseFrame(line); if(!frame) continue;
     if(last && frame.uptime_ms<last.uptime_ms) hiddenBefore=-1;
+    if(resetSnapshotExpected){settingsLoaded=false;settingsDirty=false;resetSnapshotExpected=false;}
     last=frame; received=Date.now(); capturedAt=new Date(); logs(); render();
    }
    if(buffer.length>65536) buffer="";
@@ -184,19 +191,15 @@ $("download").addEventListener("click",()=>{
  const a=document.createElement("a"); a.href=url; a.download=`aquarium-diagnostics-${capturedAt.toISOString().replace(/[:.]/g,"-")}.txt`; document.body.append(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),1000); toast("Отчёт сохранён на ваш компьютер");
 });
 $("clear-log").addEventListener("click",()=>{hiddenBefore=last?.events.at(-1)?.seq ?? -1;logs();toast("Очищен только экран журнала; отчёт сохранит события устройства");});
-$("help").addEventListener("click",()=>$("help-dialog").showModal());
-document.querySelectorAll(".dialog-close,.dialog-done").forEach(b=>b.addEventListener("click",()=>$("help-dialog").close()));
+$("help").addEventListener("click",()=>openDialog($('help-dialog')));
+document.querySelectorAll(".dialog-close,.dialog-done").forEach(b=>b.addEventListener("click",()=>closeDialog($('help-dialog'))));
 if(supported) navigator.serial.addEventListener("disconnect",event=>{if(event.target===port) disconnect("Кабель отключён. Подключите термометр заново.");});
 setInterval(render,1000);
 if($('browser-error')) $('browser-error').hidden=supported;
 render();
 
-if($('settings-form')) {
- $('settings-form').addEventListener('input',updateSettingsButton);
- $('settings-form').addEventListener('submit',async event=>{
-  event.preventDefault();
-  if(!port || !last?.settings || !settingsDirty || settingsPending || !$('settings-form').reportValidity())return;
-  const value=formSettings();
+async function persistSettings(command,value=null,resetting=false){
+ settingsResetPending=resetting;
   clearInterval(poll);poll=null;
   try {
    // Finish any snapshot write before acquiring the serial writer for settings.
@@ -206,14 +209,34 @@ if($('settings-form')) {
     settingsPending=ok=>{clearTimeout(timeout);settingsPending=null;resolve(ok);};
    });
    render();
-   await send('AQ1 SETTINGS '+JSON.stringify(value));
+   await send(command);
    const ok=await result;
-   if(ok){last.settings={...value};settingsDirty=false;await send();}
-   toast(ok ? 'Настройки сохранены' : 'Сохранение не подтверждено. Переподключитесь и проверьте значения.');
+   if(ok){if(value){last.settings={...value};settingsLoaded=false;}settingsDirty=false;await send();}
+   if(ok && resetting)closeDialog($('settings-reset-dialog'));
+   toast(ok ? resetting ? 'Настройки сброшены' : 'Настройки сохранены' : 'Сохранение не подтверждено. Переподключитесь и проверьте значения.');
   } catch {if(settingsPending)settingsPending(false);toast('Не удалось сохранить настройки. Проверьте USB-подключение.');}
-  finally {if(port && !closing)poll=setInterval(()=>send().catch(()=>disconnect("Связь потеряна. Переподключите термометр.")),2000);render();}
+  finally {settingsResetPending=false;if(resetting){$('settings-reset-confirm').disabled=false;$('settings-reset-cancel').disabled=false;} if(port && !closing)poll=setInterval(()=>send().catch(()=>disconnect("Связь потеряна. Переподключите термометр.")),2000);render();}
+}
+if($('settings-form')) {
+ $('settings-form').addEventListener('input',updateSettingsButton);
+ $('settings-form').addEventListener('submit',async event=>{
+  event.preventDefault();
+  if(!port || !last?.settings || !settingsDirty || settingsPending || !$('settings-form').reportValidity())return;
+  const value=formSettings();
+  await persistSettings('AQ1 SETTINGS '+JSON.stringify(value),value);
  });
 }
+$('settings-reset')?.addEventListener('click',()=>{
+ if(!port||settingsPending||last?.settings_reset!==true)return;
+ openDialog($('settings-reset-dialog'));
+});
+$('settings-reset-cancel')?.addEventListener('click',()=>closeDialog($('settings-reset-dialog')));
+$('settings-reset-dialog')?.addEventListener('cancel',event=>{if(settingsPending)event.preventDefault();});
+$('settings-reset-confirm')?.addEventListener('click',async()=>{
+ if(!port||settingsPending||last?.settings_reset!==true)return;
+ $('settings-reset-confirm').disabled=true;$('settings-reset-cancel').disabled=true;
+ await persistSettings('AQ1 RESET_SETTINGS',null,true);
+});
 
 $('settings-open')?.addEventListener('click',()=>{
  if(!settingsDirty) {
@@ -221,10 +244,10 @@ $('settings-open')?.addEventListener('click',()=>{
   calibrationRaw=fresh ? last.raw_temperature_c : null;
  }
  renderCalibration();
- $('settings-panel').showModal();
+ openDialog($('settings-panel'));
 });
-$('settings-close')?.addEventListener('click',()=>$('settings-panel').close());
-$('settings-panel')?.addEventListener('click',event=>{if(event.target===$('settings-panel')){const rect=event.target.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)event.target.close();}});
+$('settings-close')?.addEventListener('click',()=>closeDialog($('settings-panel')));
+$('settings-panel')?.addEventListener('click',event=>{if(event.target===$('settings-panel')){const rect=event.target.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)closeDialog(event.target);}});
 
 function brightnessChanged(event) {
  const value=brightnessLevels[Number(event.target.value)];
@@ -294,11 +317,11 @@ async function openInstaller(mode) {
  $('install-mode').dispatchEvent(new Event('change'));
  $('install-title').textContent=mode==='initial'?'Установка прошивки':'Обновление прошивки';
  $('install-explanation').textContent=mode==='initial'?'Проверьте сборку при отключённом USB, затем подключите плату. Установим последнюю доступную версию.':'Обновление сохраняет настройки и Zigbee-привязку. Выберите ту же плату в окне браузера.';
- $('install-dialog').showModal();
+ openDialog($('install-dialog'));
 }
 $('install-open')?.addEventListener('click',()=>openInstaller('initial'));
 $('update-open')?.addEventListener('click',()=>openInstaller('update'));
-$('install-close')?.addEventListener('click',()=>$('install-dialog').close());
+$('install-close')?.addEventListener('click',()=>closeDialog($('install-dialog')));
 async function finishInstallation(event){
  const installStatus=text=>{ $('install-status').textContent=text; };
  if(!event.detail?.restarted){
@@ -319,7 +342,7 @@ async function finishInstallation(event){
   if(!port||!last)throw new Error('Нет ответа термометра');
 
   installStatus('Прошивка установлена. Термометр подключён.');
-  $('install-dialog').close();
+  closeDialog($('install-dialog'));
   notice('');
  }catch(error){
 
@@ -349,3 +372,14 @@ function checkFirmwareUpdate(){
  return updateCheckPending;
 }
 void checkFirmwareUpdate();
+
+// Escape follows the same animation; keep operation guards from the forms/installer.
+for(const dialog of document.querySelectorAll('dialog')){
+ dialog.addEventListener('cancel',event=>{
+  if(event.defaultPrevented)return;
+  event.preventDefault();
+  if(dialog.id==='install-dialog' && $('install-close').disabled)return;
+  if(dialog.id==='settings-reset-dialog' && settingsPending)return;
+  closeDialog(dialog);
+ });
+}

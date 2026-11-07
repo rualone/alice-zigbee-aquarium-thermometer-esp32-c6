@@ -699,6 +699,7 @@ dialog ol {
   padding-top:64px;
 }
 .footer-github {
+  font-size:9px;
   color:#416956;
   font-weight:500;
 }
@@ -1130,3 +1131,54 @@ tick positions are calculated from the thumb radius in app.js. */
 
 /* The settings button appears only when connected; keep the header height stable. */
 .card-top{min-height:36px;}
+
+.settings-reset{display:block;margin:20px auto 0;font-size:13px;}
+.reset-dialog{width:min(480px,calc(100vw - 32px));border:0;border-radius:28px;padding:28px;background:#f7faf4;color:#344d3d;}
+.reset-dialog h2{font-size:24px;margin:0 0 16px;}.reset-dialog p{font-size:14px;line-height:1.6;color:#657468;}
+.reset-actions{display:flex;align-items:center;justify-content:flex-end;gap:20px;margin-top:24px;}.reset-actions .primary{width:auto;padding:14px 20px;}
+
+/* Dialog actions share geometry; SVG close icons do not depend on font metrics. */
+.settings-close,.dialog-close{display:grid;place-items:center;padding:0;line-height:1;box-sizing:border-box;}
+.settings-close svg,.dialog-close svg{display:block;width:24px;height:24px;margin:0;flex:none;}
+.reset-dialog{padding:28px;border-radius:28px;background:#f3f7ee;box-shadow:0 24px 80px #203a2929;}
+.reset-actions{gap:12px;flex-wrap:wrap;}
+.reset-button{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:12px 20px;border:0;border-radius:24px;font:600 14px/1.4 Inter,sans-serif;cursor:pointer;transition:background .15s,opacity .15s;}
+.reset-button-tonal{background:#e0e9d9;color:#33563f;}.reset-button-tonal:hover{background:#d3e0cb;}
+.reset-button-filled{background:#2c6655;color:#fff;}.reset-button-filled:hover{background:#245545;}
+.reset-button:focus-visible{outline:3px solid #719a80;outline-offset:3px;}.reset-button:disabled{opacity:.45;cursor:default;}
+
+/* Every modal starts at the top and enters without moving the page layout. */
+dialog[open]{animation:dialog-enter 260ms cubic-bezier(.2,.8,.2,1) both;}
+dialog[open]::backdrop{animation:dialog-backdrop-enter 220ms ease-out both;}
+@keyframes dialog-enter{from{opacity:0;transform:scale(.92);}to{opacity:1;transform:scale(1);}}
+@keyframes dialog-backdrop-enter{from{opacity:0;}to{opacity:1;}}
+@media(prefers-reduced-motion:reduce){dialog[open],dialog[open]::backdrop{animation:none;}}
+
+dialog{transform-origin:center center;}
+dialog.dialog-closing::backdrop{animation:dialog-backdrop-exit 180ms ease-in both;}
+@keyframes dialog-backdrop-exit{from{opacity:1;}to{opacity:0;}}
+@media(prefers-reduced-motion:reduce){dialog.dialog-closing::backdrop{animation:none;}}
+
+/* Settings header and actions stay outside the scrollable form. */
+#settings-panel{padding:0;overflow:hidden;width:min(620px,calc(100vw - 32px));max-height:90dvh;}
+#settings-panel[open]{display:flex;flex-direction:column;}
+.settings-header{position:relative;flex:none;padding:28px 32px 24px;border-bottom:1px solid #e0e8dc;}
+.settings-header h2{margin:0;padding-right:36px;}
+.settings-header .settings-close{top:20px;right:24px;}
+.settings-body{min-height:0;overflow:auto;overscroll-behavior:contain;padding:24px 32px;scrollbar-width:thin;}
+.settings-body .settings-intro{margin:0 0 24px;}
+#settings-panel .settings-footer{display:flex;flex:none;flex-direction:column;gap:16px;padding:20px 32px 24px;border-top:1px solid #e0e8dc;margin:0;background:#f4f8f2;}
+#settings-panel .settings-footer .primary,#settings-panel .settings-footer .settings-reset{margin:0;}
+#settings-panel .settings-footer .settings-reset{align-self:center;}
+@media(max-width:480px){.settings-header{padding:24px 20px 20px;}.settings-header .settings-close{right:16px;top:18px;}.settings-body{padding:20px;}#settings-panel .settings-footer{padding:16px 20px 20px;}}
+
+/* Installer chrome is outside its single scroll container. */
+#install-dialog{overflow:hidden;max-height:90dvh;}
+#install-dialog[open]{display:flex;flex-direction:column;}
+#install-dialog .flash-header{position:relative;top:auto;flex:none;}
+#install-dialog .install-body{min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;}
+#install-dialog .install-body>*{flex-shrink:0;}
+#install-dialog .flash-actions{position:relative;bottom:auto;flex:none;}
+
+
+@media(max-width:600px){#install-dialog .flash-actions{flex-wrap:wrap;gap:14px;}.installer-github{margin:0 auto;}}
