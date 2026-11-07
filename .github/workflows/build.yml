@@ -13,6 +13,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Проверка хранения настроек
         run: python tests/test_settings.py
+      - name: Проверка состояния связи Zigbee
+        run: python tests/test_zigbee_health.py
       - name: Сборка для ESP32-C6
         shell: bash
         run: |

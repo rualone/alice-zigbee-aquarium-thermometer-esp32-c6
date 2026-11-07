@@ -3,6 +3,8 @@
 #include "esp_err.h"
 void diagnostics_start(void);
 void diagnostics_measurement(bool valid, float temperature, float raw_temperature, int offset_centi, esp_err_t error);
-void diagnostics_network(bool ready);
 void diagnostics_report(bool queued);
 void diagnostics_event(const char *message);
+
+/* Network membership is distinct from delivery to the coordinator/application. */
+void diagnostics_zigbee(const char *state, const char *reason);

@@ -1,4 +1,4 @@
-import {parseFrame, duration, report, eventText} from "./protocol.js";
+import {parseFrame, duration, report, eventText, zigbeeBadge, showZigbeeBadge} from "./protocol.js?v=zigbee-05-visible-5";
 const $ = id => document.getElementById(id);
 let port = null, reader = null, reading = null, poll = null, last = null, received = 0, capturedAt = null;
 let activeWriter = null;
@@ -75,6 +75,13 @@ function render() {
  const stale = live && Date.now()-received>10000;
  const oldMeasure = live && last.measurement_age_ms !== null && last.measurement_age_ms+Date.now()-received>Math.max(30000,(last.sample_interval_ms || 5000)*2+2000);
  const error = live && (last.probe!=="ok" || stale || oldMeasure);
+ const badge=zigbeeBadge(last,live&&!stale);
+ if($('zigbee-pill')){
+  $('zigbee-pill').hidden=!showZigbeeBadge(last,live);
+  $('zigbee-pill').className='status-pill zigbee-pill '+badge.tone;
+  $('zigbee-pill').title=badge.label;
+  $('zigbee-pill').setAttribute('aria-label',badge.label);
+ }
  $("status-pill").className="status-pill"+(live ? error ? " error" : " connected" : "");
  $("status-pill").querySelector("span").textContent=connecting ? "Подключение…" : live ? stale ? "Нет ответа" : error ? "Нужна проверка" : "Подключён" : "Не подключён";
  if(live) {

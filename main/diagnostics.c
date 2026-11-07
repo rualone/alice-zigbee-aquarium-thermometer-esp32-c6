@@ -25,6 +25,8 @@ static struct {
     int offset_centi;
     uint32_t errors, report_failures, sequence;
     int64_t measured_ms, reported_ms;
+    char zigbee_state[20], zigbee_reason[40];
+    int64_t zigbee_since_ms;
     esp_err_t error;
     unsigned head, count;
     struct { uint32_t seq; int64_t ms; char message[EVENT_LENGTH]; } events[EVENT_COUNT];
@@ -61,12 +63,23 @@ void diagnostics_measurement(bool valid, float temperature, float raw_temperatur
     event_locked(message);
     xSemaphoreGive(mutex);
 }
-void diagnostics_network(bool ready)
+void diagnostics_zigbee(const char *state, const char *reason)
 {
     if (!mutex) return;
     xSemaphoreTake(mutex, portMAX_DELAY);
-    data.network = ready;
-    event_locked(ready ? "Zigbee local state: joined" : "Zigbee local state: searching/offline");
+    if (strcmp(state, "trouble") == 0 && !data.network) {
+        xSemaphoreGive(mutex);
+        return;
+    }
+    if (strcmp(data.zigbee_state, state) != 0 || strcmp(data.zigbee_reason, reason) != 0) {
+        snprintf(data.zigbee_state, sizeof(data.zigbee_state), "%s", state);
+        snprintf(data.zigbee_reason, sizeof(data.zigbee_reason), "%s", reason);
+        data.zigbee_since_ms = uptime_ms();
+        data.network = strcmp(state, "joined") == 0 || strcmp(state, "trouble") == 0 || strcmp(state, "checking") == 0;
+        char message[EVENT_LENGTH];
+        snprintf(message, sizeof(message), "Zigbee: %s (%s)", state, reason);
+        event_locked(message);
+    }
     xSemaphoreGive(mutex);
 }
 void diagnostics_report(bool queued)
@@ -107,6 +120,10 @@ static void snapshot(void)
     cJSON_AddNumberToObject(root, "probe_errors", data.errors);
     cJSON_AddNumberToObject(root, "report_failures", data.report_failures);
     cJSON_AddBoolToObject(root, "zigbee_joined", data.network);
+    cJSON *zigbee = cJSON_AddObjectToObject(root, "zigbee");
+    cJSON_AddStringToObject(zigbee, "state", data.zigbee_state);
+    cJSON_AddStringToObject(zigbee, "reason", data.zigbee_reason);
+    cJSON_AddNumberToObject(zigbee, "state_age_ms", uptime_ms() - data.zigbee_since_ms);
     if (data.reported_ms) cJSON_AddNumberToObject(root, "report_age_ms", uptime_ms() - data.reported_ms);
     else cJSON_AddNullToObject(root, "report_age_ms");
     cJSON *events = cJSON_AddArrayToObject(root, "events");
@@ -170,6 +187,7 @@ void diagnostics_start(void)
     usb_serial_jtag_driver_config_t config = {.tx_buffer_size = 4096, .rx_buffer_size = 256};
     if (!usb_serial_jtag_is_driver_installed()) ESP_ERROR_CHECK(usb_serial_jtag_driver_install(&config));
     usb_serial_jtag_vfs_use_driver();
+    diagnostics_zigbee("starting", "initialization");
     diagnostics_event("Device started; diagnostics protocol v1");
     ESP_ERROR_CHECK(xTaskCreate(usb_task, "usb_diagnostics", 6144, NULL, 2, NULL) == pdPASS ? ESP_OK : ESP_ERR_NO_MEM);
 }

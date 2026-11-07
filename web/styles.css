@@ -1120,3 +1120,13 @@ tick positions are calculated from the thumb radius in app.js. */
 .browser-error p { color:#8b4943; }
 .browser-error .help-symbol { color:#b53c32;border-color:#cf827a; }
 .browser-error[hidden] { display:none; }
+
+
+.connection-pills{display:flex;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap;}
+.status-pill.zigbee-pill.connected{color:#285fa6;background:#eaf2ff;}
+.status-pill.zigbee-pill.connected i{background:#3478d0;}
+.status-pill.zigbee-pill.neutral{color:#737b77;background:#f0f2f0;}
+.status-pill.zigbee-pill.neutral i{background:#969d99;}
+
+/* The settings button appears only when connected; keep the header height stable. */
+.card-top{min-height:36px;}

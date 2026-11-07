@@ -21,6 +21,7 @@ test('connects only after matching USB response, renders real value, exports rep
  await element('connect').handlers.click();
  assert.equal(element('connected-view').hidden,false);
  assert.equal(element('firmware').textContent,'0.2');
+ assert.equal(element('zigbee-pill').hidden,true);
  assert.equal(element('temperature').textContent,'27,3');
  element('download').handlers.click();
  assert.match(await downloaded.text(),/27,3 °C/);
@@ -44,4 +45,17 @@ test('update entry uses the actual board version and refreshes manifest on conne
  await new Promise(resolve=>setTimeout(resolve,0));
  assert.equal(element('update-card').hidden,true);
  await element('disconnect').handlers.click();
+});
+
+test('connected card renders Zigbee badge independently from the probe',async()=>{
+ snapshot.firmware='0.5';snapshot.zigbee={state:'lost',reason:'parent_lost',state_age_ms:5000};
+ await element('connect').handlers.click();
+ assert.equal(element('zigbee-pill').hidden,false);
+ assert.equal(element('zigbee-pill').className,'status-pill zigbee-pill error');
+ assert.match(element('zigbee-pill').title,/проблемы/);
+ assert.equal(element('connected-view').hidden,false);
+ assert.equal(element('temperature').textContent,'27,3');
+ await element('disconnect').handlers.click();
+ assert.equal(element('zigbee-pill').hidden,true);
+ delete snapshot.zigbee;
 });

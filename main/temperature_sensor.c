@@ -31,6 +31,9 @@
 #include "temperature_sensor.h"
 #include "diagnostics.h"
 #include "settings.h"
+#include "zigbee_health.h"
+#include "esp_timer.h"
+#include "ezbee/zdo/zdo_dev_srv_disc.h"
 
 static atomic_bool network_ready = false;
 static atomic_bool probe_ok = false;
@@ -136,6 +139,7 @@ static void indicator_task(void *arg)
             if (held) {
                 esp_zigbee_lock_acquire(portMAX_DELAY);
                 diagnostics_event("Pairing reset requested by BOOT");
+                diagnostics_zigbee("unpaired", "local_reset");
                 esp_zigbee_factory_reset();
                 esp_zigbee_lock_release();
             }
@@ -216,9 +220,42 @@ static esp_err_t deferred_driver_init(void)
     return ESP_OK;
 }
 
+/* Serialized by the Zigbee lock, including callbacks dispatched by the stack. */
+static zigbee_health_t health;
+static void health_result(const ezb_zdo_node_desc_req_result_t *result, void *ctx)
+{
+    bool success = result && result->error == EZB_ERR_NONE && result->rsp &&
+        result->rsp->status == EZB_ZDP_STATUS_SUCCESS && result->rsp->nwk_addr_of_interest == 0;
+    if (!zigbee_health_finish(&health, (uint32_t)(uintptr_t)ctx, success, esp_timer_get_time() / 1000)) return;
+    if (success) diagnostics_zigbee("joined", "coordinator_response");
+    else if (health.failures >= ZIGBEE_HEALTH_FAILURE_LIMIT) diagnostics_zigbee("trouble", "probe_timeout");
+    else diagnostics_zigbee("checking", "probe_retry");
+}
+static void zigbee_health_task(void *arg)
+{
+    for (;;) {
+        vTaskDelay(pdMS_TO_TICKS(1000));
+        esp_zigbee_lock_acquire(portMAX_DELAY);
+        int64_t now = esp_timer_get_time() / 1000;
+        if (!ezb_bdb_dev_joined()) {
+            if (health.pending || health.failures || health.next_ms) zigbee_health_reset(&health);
+        } else if (health.pending && now - health.started_ms >= ZIGBEE_HEALTH_TIMEOUT_MS) {
+            health_result(NULL, (void *)(uintptr_t)health.generation);
+        } else if (!health.pending && now >= health.next_ms) {
+            zigbee_health_begin(&health, now);
+            static ezb_zdo_node_desc_req_t req;
+            req = (ezb_zdo_node_desc_req_t){.dst_nwk_addr=0, .field={.nwk_addr_of_interest=0},
+                .cb=health_result, .user_ctx=(void *)(uintptr_t)health.generation};
+            if (ezb_zdo_node_desc_req(&req) != EZB_ERR_NONE) health_result(NULL, req.user_ctx);
+        }
+        esp_zigbee_lock_release();
+    }
+}
+
 static void esp_zigbee_alarm_bdb_commissioning(alarm_timer_arg_t arg)
 {
     esp_zigbee_lock_acquire(portMAX_DELAY);
+    if (arg == EZB_BDB_MODE_INITIALIZATION) diagnostics_zigbee("starting", "initialization");
     (void)ezb_bdb_start_top_level_commissioning(arg);
     esp_zigbee_lock_release();
 }
@@ -236,13 +273,15 @@ static bool esp_zigbee_app_signal_handler(const ezb_app_signal_t *app_signal)
     case EZB_BDB_SIGNAL_DEVICE_REBOOT: {
         ezb_bdb_comm_status_t status = *((ezb_bdb_comm_status_t *)ezb_app_signal_get_params(app_signal));
         if (status == EZB_BDB_STATUS_SUCCESS) {
+            zigbee_health_reset(&health);
             ESP_LOGI(TAG, "Deferred driver initialization %s", deferred_driver_init() ? "failed" : "successful");
             ESP_LOGI(TAG, "Device started up in%s factory-reset mode", ezb_bdb_is_factory_new() ? "" : " non");
             if (ezb_bdb_is_factory_new()) {
+                diagnostics_zigbee("searching", "steering");
                 ezb_bdb_start_top_level_commissioning(EZB_BDB_MODE_NETWORK_STEERING);
             } else {
                 atomic_store(&network_ready, true);
-                diagnostics_network(true);
+                diagnostics_zigbee("checking", "saved_network");
                 ESP_LOGI(TAG, "Device reboot; saved network restored");
             }
         } else {
@@ -253,12 +292,13 @@ static bool esp_zigbee_app_signal_handler(const ezb_app_signal_t *app_signal)
     case EZB_BDB_SIGNAL_STEERING: {
         ezb_bdb_comm_status_t status = *((ezb_bdb_comm_status_t *)ezb_app_signal_get_params(app_signal));
         if (status == EZB_BDB_STATUS_SUCCESS) {
+            zigbee_health_reset(&health);
             atomic_store(&network_ready, true);
-                diagnostics_network(true);
+            diagnostics_zigbee("checking", "joined_unverified");
             ESP_LOGI(TAG, "Joined Zigbee network successfully");
         } else {
             atomic_store(&network_ready, false);
-            diagnostics_network(false);
+            diagnostics_zigbee("searching", "join_failed");
             ESP_LOGW(TAG, "Failed to join network with status(0x%02x)", status);
             alarm_timer_schedule(esp_zigbee_alarm_bdb_commissioning, EZB_BDB_MODE_NETWORK_STEERING, 1000);
         }
@@ -268,10 +308,21 @@ static bool esp_zigbee_app_signal_handler(const ezb_app_signal_t *app_signal)
         ESP_LOGI(TAG, "New device commissioned or rejoined (short: 0x%04hx)", dev_annce_params->short_addr);
     } break;
     case EZB_ZDO_SIGNAL_LEAVE: {
+        zigbee_health_reset(&health);
         atomic_store(&network_ready, false);
-            diagnostics_network(false);
         const ezb_zdo_signal_leave_params_t *leave_params = ezb_app_signal_get_params(app_signal);
+        diagnostics_zigbee(leave_params->leave_type == EZB_ZDO_LEAVE_TYPE_REJOIN ? "lost" : "unpaired",
+                           leave_params->leave_type == EZB_ZDO_LEAVE_TYPE_REJOIN ? "leave_rejoin" : "leave_reset");
         ESP_LOGI(TAG, "Left network successfully with type(0x%02x)", leave_params->leave_type);
+    } break;
+    case EZB_ZDO_SIGNAL_PARENT_LOST:
+        zigbee_health_reset(&health);
+        diagnostics_zigbee("lost", "parent_lost");
+        break;
+    case EZB_ZDO_SIGNAL_DEVICE_UNAVAILABLE: {
+        const ezb_zdo_signal_device_unavailable_params_t *unavailable = ezb_app_signal_get_params(app_signal);
+        /* Ignore unrelated peers. 0x0000 is the coordinator, not necessarily our parent. */
+        if (unavailable && unavailable->short_addr == 0x0000) ESP_LOGW(TAG, "Coordinator transmission unavailable; waiting for health check");
     } break;
     case EZB_NWK_SIGNAL_PERMIT_JOIN_STATUS: {
         uint8_t duration = *(uint8_t *)ezb_app_signal_get_params(app_signal);
@@ -347,6 +398,7 @@ static void esp_zigbee_stack_main_task(void *pvParameters)
 
     ESP_ERROR_CHECK(esp_zigbee_start(false));
 
+    ESP_ERROR_CHECK(xTaskCreate(zigbee_health_task, "zigbee_health", 4096, NULL, 3, NULL) == pdPASS ? ESP_OK : ESP_ERR_NO_MEM);
     esp_zigbee_launch_mainloop();
 
     esp_zigbee_deinit();
