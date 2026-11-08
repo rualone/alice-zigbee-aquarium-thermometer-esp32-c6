@@ -1,4 +1,10 @@
 /*
+ * Приложение термометра
+ * Задачи измерения, индикации и Zigbee разделены: недоступный хаб не должен останавливать щуп.
+ * Настройки читаются перед работой, а принятая температура проходит проверку диапазона.
+ * Постановка отчёта в очередь не равнозначна доставке; доступность координатора проверяется отдельно.
+ */
+/*
  * SPDX-FileCopyrightText: 2024-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: LicenseRef-Included
@@ -95,6 +101,7 @@ static bool report_temperature(void)
 
 /* Reset-ready > discovery > probe failure > normal operation.
  * RGB uses a dedicated RMT TX channel, separate from the probe bus. */
+/* Приоритеты индикации фиксированы: готовность сброса, поиск, ошибка щупа, штатная работа. Яркость считывается отдельно, поэтому изменение настройки не требует перезапуска. */
 static void indicator_task(void *arg)
 {
     gpio_config_t cfg = {.pin_bit_mask = 1ULL << CONFIG_AQUARIUM_BOOT_GPIO,
@@ -151,6 +158,7 @@ static void indicator_task(void *arg)
     }
 }
 
+/* Обрыв щупа не завершает задачу: следующая итерация снова пытается получить измерение. Температура и поправка проверяются до публикации. Передача по порогу и по интервалу дополняют друг друга. */
 static void aquarium_service_task(void *arg)
 {
     onewire_bus_handle_t bus;
@@ -389,6 +397,7 @@ esp_err_t esp_zigbee_setup_commissioning(void)
     return ESP_OK;
 }
 
+/* Локальные драйверы запускаются после создания Zigbee-устройства, но до восстановления сети. Иначе выключенный хаб оставляет щуп без задачи и ошибочно провоцирует OTA-откат. */
 static void esp_zigbee_stack_main_task(void *pvParameters)
 {
     esp_zigbee_config_t config = ESP_ZIGBEE_DEFAULT_CONFIG();

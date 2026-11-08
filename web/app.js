@@ -1,8 +1,16 @@
-import {createAppearanceUI} from './appearance.js?v=device-theme-08-disconnect-2';
-import {supportsDeviceTheme} from './themes.js?v=device-theme-08-disconnect-2';
-import {installationState} from './update-result.js?v=ota-07';
-import {openDialog,closeDialog} from "./dialogs.js?v=modal-motion-2";
-import {parseFrame, duration, report, eventText, zigbeeBadge, showZigbeeBadge} from "./protocol.js?v=device-theme-08";
+import {compareVersions} from './versions.js?v=1.0';
+/*
+ * Оркестрация страницы
+ * Управляет жизненным циклом Web Serial, снимками, настройками и окнами.
+ * Один активный writer исключает одновременную запись команды и запроса снимка в порт.
+ * Черновик настроек не перезаписывается фоновыми снимками, пока пользователь редактирует форму.
+ * ACK означает запись настроек; готовность новой прошивки проверяется отдельно после переподключения.
+ */
+import {createAppearanceUI} from './appearance.js?v=1.0';
+import {supportsDeviceTheme} from './themes.js?v=1.0';
+import {installationState} from './update-result.js?v=1.0';
+import {openDialog,closeDialog} from "./dialogs.js?v=1.0";
+import {parseFrame, duration, report, eventText, zigbeeBadge, showZigbeeBadge} from "./protocol.js?v=1.0";
 const $ = id => document.getElementById(id);
 let port = null, reader = null, reading = null, poll = null, last = null, received = 0, capturedAt = null;
 const appearance=createAppearanceUI(document,{onChange:()=>updateSettingsButton(),onError:message=>toast(message)});
@@ -136,6 +144,7 @@ async function send(command="AQ1 SNAPSHOT") {
  try { await writer.write(new TextEncoder().encode(command+"\n")); }
  finally { writer.releaseLock(); activeWriter=null; }
 }
+/* TextDecoder сохраняет состояние UTF-8 между фрагментами. Обрабатываем только полные строки: ESP_LOG и JSON могут приходить в одном чтении. Один ожидаемый ACK принадлежит единственной выполняющейся команде настроек. */
 async function readLoop(activePort) {
  reader=activePort.readable.getReader();
  const decoder=new TextDecoder(); let buffer="";
@@ -168,6 +177,7 @@ async function disconnect(message="Термометр отключён.") {
  catch { /* A removed USB device may already be closed. */ }
  finally { port=null; reading=null; connecting=false; closing=false; notice(message); render(); }
 }
+/* Выбранный порт не считается термометром, пока не получен валидный AQ1-снимок. При повторном подключении после прошивки допускается уже разрешённый порт; неоднозначный выбор не угадывается. */
 async function connect(existingPort=null) {
  if(connecting || port) return;
  connecting=true; calibrationRaw=null; settingsDirty=false; settingsLoaded=false; last=null; hiddenBefore=-1; notice(""); render();
@@ -204,6 +214,7 @@ setInterval(render,1000);
 if($('browser-error')) $('browser-error').hidden=supported;
 render();
 
+/* Приостанавливаем опрос и ждём освобождения writer. ACK подтверждает сохранение; запрос снимка синхронизирует поля, особенно после сброса. Тайм-аут не означает достоверный отказ записи: пользователь должен переподключиться и проверить значения. */
 async function persistSettings(command,value=null,resetting=false){
  settingsResetPending=resetting;
   clearInterval(poll);poll=null;
@@ -306,10 +317,7 @@ for(const dialog of document.querySelectorAll('dialog')) {
 
 function renderUpdateEntry() {
  const button=$('update-open');if(!button)return;
- const version=s=>/^\d+\.\d+(?:\.\d+)?$/.test(s||'')?s.split('.').map(Number):null;
- const current=version(last?.firmware),latest=version(latestFirmware);
- let newer=false;
- if(current&&latest)for(let i=0;i<3;i++){if((latest[i]||0)!==(current[i]||0)){newer=(latest[i]||0)>(current[i]||0);break;}}
+ const newer=compareVersions(latestFirmware,last?.firmware)===1;
  const card=$('update-card');
  if(card)card.hidden=!(port && newer && !connecting);
  button.hidden=false;

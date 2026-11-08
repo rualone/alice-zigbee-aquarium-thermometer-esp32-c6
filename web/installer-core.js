@@ -1,3 +1,10 @@
+import {compareVersions} from './versions.js?v=1.0';
+/*
+ * Проверки пакета и операции загрузчика
+ * Адреса ограничены известной разметкой, чтобы случайный пакет не затронул настройки и Zigbee.
+ * SHA-256 проверяется до записи, MD5 — после неё; это контроль целостности, а не цифровая подпись.
+ * SPI-чтение ограничено малыми диапазонами. Режим адресации восстанавливается даже при ошибке USB.
+ */
 export const PROJECT='alice_zigbee_aquarium_thermometer';
 export function appIdentity(data) {
  const view=new DataView(data.buffer,data.byteOffset,data.byteLength);
@@ -12,13 +19,9 @@ export function validateUpdate(partition,expected,app,targetVersion) {
 export function validateApp(app,targetVersion) {
  const identity=appIdentity(app);
  if(identity.project!==PROJECT.slice(0,31))throw new Error('На плате установлена другая прошивка. Обновление остановлено.');
- const version=s=>/^\d+\.\d+(?:\.\d+)?$/.test(s) ? s.split('.').map(Number) : null;
- const current=version(identity.version),target=version(targetVersion);
- if(!current || !target)throw new Error('Не удалось проверить совместимость версий.');
- for(let i=0;i<3;i++) {
-  if((current[i]||0)>(target[i]||0))throw new Error('На плате более новая версия. Понижение версии остановлено.');
-  if((current[i]||0)<(target[i]||0))break;
- }
+ const comparison=compareVersions(identity.version,targetVersion);
+ if(comparison===null)throw new Error('Не удалось проверить совместимость версий.');
+ if(comparison>0)throw new Error('На плате более новая версия. Понижение версии остановлено.');
  return identity;
 }
 export function validateManifest(m) {

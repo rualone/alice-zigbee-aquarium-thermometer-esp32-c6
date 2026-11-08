@@ -1,3 +1,10 @@
+/*
+ * USB-протокол и журнал
+ * Команды AQ1 заканчиваются переводом строки. Ответы @AQ1 и @AQSET отделены от обычного ESP_LOG.
+ * Снимок — наблюдение текущего состояния, а не подтверждение доставки показаний в умный дом.
+ * Вход ограничен буфером: слишком длинная команда отбрасывается целиком до следующего перевода строки.
+ * Журнал кольцевой, хранится только в RAM; адреса и ключи Zigbee в отчёт не передаются.
+ */
 /* SPDX-License-Identifier: MIT */
 #include "diagnostics.h"
 #include "settings.h"
@@ -91,6 +98,7 @@ void diagnostics_report(bool queued)
     event_locked(queued ? "Temperature report queued; delivery not confirmed" : "Cannot queue temperature report");
     xSemaphoreGive(mutex);
 }
+/* Снимок берёт защищённую копию текущих измерений; возраст передаётся явно, чтобы браузер не выдавал старое значение за свежее. */
 static void snapshot(void)
 {
     cJSON *root = cJSON_CreateObject();
@@ -151,6 +159,7 @@ static void snapshot(void)
     }
     cJSON_Delete(root);
 }
+/* Четыре исходных параметра обязательны; новые необязательные поля сохраняют прежние значения при отсутствии. Неизвестные и повторные ключи отвергаются, чтобы опечатка клиента не превращалась в успешное частичное сохранение. */
 static void configure(const char *text) {
     cJSON *r=cJSON_Parse(text);
     const char *names[]={"brightness","sample_seconds","report_seconds","delta_centi","offset_centi","theme"};
@@ -178,6 +187,7 @@ static void configure(const char *text) {
     fflush(stdout);
     snapshot();
 }
+/* Поток USB не гарантирует границы строк. Накапливаем команду до перевода строки; переполнение переводит приёмник в отбрасывание до конца команды. */
 static void usb_task(void *arg)
 {
     char line[256]; unsigned used = 0; bool discard = false;

@@ -1,3 +1,9 @@
+/*
+ * Модель оформления и загрузка изображений
+ * Идентификаторы тем стабильны и совпадают с числами в прошивке. Порядок менять нельзя без миграции.
+ * Цвета применяются вместе с готовым изображением. Ошибка загрузки не должна оставлять смешанную тему.
+ * Проверки ранних версий сохранены намеренно: разработчик может установить старую сборку.
+ */
 // Stable IDs map directly to the firmware theme integer (0..3).
 export const THEMES=Object.freeze([
  Object.freeze({id:'planted',name:'Травник'}),
@@ -35,6 +41,7 @@ export function supportsDeviceTheme(snapshot) {
   snapshot.theme_settings===true && Number.isInteger(snapshot.settings?.theme) &&
   snapshot.settings.theme>=0 && snapshot.settings.theme<THEMES.length;
 }
+/* Подтверждённая тема и черновик разделены. Опрос устройства не затирает открытый изменённый черновик; явное подтверждение/сброс может принудительно синхронизировать его. Отключение сбрасывает только браузерную модель. */
 export function createThemeDraft(){
  let saved=0,value=0,supported=false;
  return {

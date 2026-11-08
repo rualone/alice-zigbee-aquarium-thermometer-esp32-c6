@@ -1,5 +1,11 @@
-import {SLOTS,OTA_SECTORS,LEGACY_PARTITION_MD5,updatePlan,safeUpdate} from './ota.js?v=ota-07';
-import {installerErrorText,validateManifest,validateApp,writeAndVerify,restartThermometer,readFlashBounded} from './installer-core.js?v=ota-07-errors-1';
+/*
+ * Сценарий установки и обновления
+ * Выбор порта вызывается непосредственно из пользовательского нажатия, до сетевых ожиданий.
+ * Первая установка явно очищает память; обновление проверяет совместимость и сохраняет постоянные разделы.
+ * При ошибке запись не продолжается. Порт освобождается до передачи управления повторному подключению.
+ */
+import {SLOTS,OTA_SECTORS,LEGACY_PARTITION_MD5,updatePlan,safeUpdate} from './ota.js?v=1.0';
+import {installerErrorText,validateManifest,validateApp,writeAndVerify,restartThermometer,readFlashBounded} from './installer-core.js?v=1.0';
 const $=id=>document.getElementById(id);
 let busy=false;
 function updateInstallButton(){

@@ -1,5 +1,12 @@
+/*
+ * Безопасное переключение приложений
+ * Сначала записывается и проверяется свободный раздел, затем меняется отдельная запись выбора загрузки.
+ * Подтверждённая запись предыдущего приложения остаётся резервной. Повреждённые метаданные не угадываются.
+ * Формат и CRC должны точно соответствовать ESP-IDF. Номера схем нельзя заменять номером релиза.
+ * Первый переход со старой разметки требует замены загрузчика и таблицы; этот этап не защищён вторым приложением.
+ */
 // Layout 2. These addresses deliberately preserve layout 1 NVS and zb_fct.
-import {writeAndVerify,readFlashBounded,flashFiles} from './installer-core.js?v=ota-07';
+import {writeAndVerify,readFlashBounded,flashFiles} from './installer-core.js?v=1.0';
 export const SLOTS=[0x20000,0x110000];
 export const OTA_SECTORS=[0xf000,0x10000];
 export const LEGACY_PARTITION_MD5='e3d6b64bafc818ae4aeb0c71d5278327';
@@ -27,6 +34,7 @@ export function readOtaRecord(bytes) {
  const valid=sequence>0&&sequence!==0xffffffff&&state!==3&&state!==4&&view.getUint32(28,true)===sequenceCRC(sequence);
  return {sequence,state,valid,empty:bytes.every(byte=>byte===255)};
 }
+/* План использует только записи с правильным CRC и подтверждённым состоянием. Пустая начальная область требует создания явной резервной записи. Переполнение счётчика блокируется, поскольку загрузчик выбирает максимальный номер, а не модульную последовательность. */
 export function updatePlan(records) {
  const parsed=records.map(readOtaRecord);
  if(parsed.length!==2)throw new Error('Нужны обе записи выбора прошивки.');
@@ -48,6 +56,7 @@ async function selectImage(loader,sector,sequence,state,read) {
  const actual=await read(loader,part.offset,32);
  if(!bytes.every((byte,index)=>actual[index]===byte))throw new Error('Не удалось подтвердить выбор новой прошивки. Повторите обновление.');
 }
+/* Порядок операций является частью гарантии восстановления: нельзя переносить выбор приложения перед проверкой записи. При миграции старого загрузчика гарантия ограничена, поскольку загрузчик и таблица разделов не дублируются. */
 export async function safeUpdate(loader,manifest,data,plan,{legacy=false,read=readFlashBounded,progress=()=>{},status=()=>{}}={}) {
  // Validate again at the mutation boundary. Only the inactive slot may be erased.
  if(![0,1].includes(plan.active)||plan.target!==1-plan.active||![0,1].includes(plan.sector)||

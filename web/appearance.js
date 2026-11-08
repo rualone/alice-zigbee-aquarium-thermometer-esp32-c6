@@ -1,4 +1,10 @@
-import {THEMES,createThemeController,createThemeDisclosure,createThemeDraft} from './themes.js?v=device-theme-08-disconnect-2';
+/*
+ * Связь оформления с интерфейсом настроек
+ * Только поддерживающая настройку прошивка может показывать выбор оформления.
+ * Модель хранит подтверждённую тему и отдельный черновик: закрытие окна отменяет только предпросмотр.
+ * Загрузка изображения асинхронна; поколения запросов не позволяют позднему результату отменить свежий выбор.
+ */
+import {THEMES,createThemeController,createThemeDisclosure,createThemeDraft} from './themes.js?v=1.0';
 export function createAppearanceUI(document,{onChange=()=>{},onError=()=>{}}={}) {
  const panel=document.getElementById('theme-settings');
  // Optional for old pages and small test DOMs.
@@ -14,6 +20,7 @@ export function createAppearanceUI(document,{onChange=()=>{},onError=()=>{}}={})
   document.getElementById('theme-current-name').textContent=theme.name;
   if(button)document.getElementById('theme-current-palette').style.setProperty('--palette',button.style.getPropertyValue('--palette'));
  };
+/* Генерация отменяет только применение устаревшего результата, не сетевую загрузку. Сохранение блокируется до окончания предпросмотра, чтобы значение и видимая тема не расходились. */
  async function paint(){
   const value=model.value;
   if(requested===value)return;
