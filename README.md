@@ -48,12 +48,12 @@
 
 [«Мой аквариум»](https://rualone.github.io/alice-zigbee-aquarium-thermometer-esp32-c6/) — страница для просмотра температуры, настройки датчика и оформления, обновления прошивки и скачивания отчёта. Подключение — по USB. Настройки хранятся в термометре и сохраняются после отключения питания.
 
-[Руководство пользователя](docs/USB_DIAGNOSTICS.md).
+[Руководство пользователя](docs/MANUAL.md).
 
 ## Документация
 
 - [Сборка устройства](docs/ASSEMBLY.md) и [сборка прошивки](docs/BUILD.md).
-- [Проверка связи Zigbee](docs/ZIGBEE_DIAGNOSTICS.md) и [безопасное обновление](docs/SAFE_UPDATE.md).
+- [Проверка связи Zigbee](docs/MANUAL.md#связь-с-хабом) и [безопасное обновление](docs/SAFE_UPDATE.md).
 - [Архитектура исходников](docs/ARCHITECTURE.md) и [результаты проверок](docs/VALIDATION.md).
 - [Участие в проекте](CONTRIBUTING.md), [сообщения об ошибках](https://github.com/rualone/alice-zigbee-aquarium-thermometer-esp32-c6/issues), [релизы](https://github.com/rualone/alice-zigbee-aquarium-thermometer-esp32-c6/releases) и [история изменений](CHANGELOG.md).
 
