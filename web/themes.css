@@ -1,0 +1,82 @@
+/* Theme roles. Status, warning and error colours are deliberately independent. */
+:root{--theme-accent:#315e46;--theme-hover:#244b35;--theme-text:#213a36;--theme-muted:#65766b;--theme-surface:#f5f7f4;--theme-container:#edf4ee;--theme-selected:#dce9df;--theme-outline:#cadbce;--theme-track:#cbdccc;--theme-dots:#6c8c75;--theme-focus:#729b7f;--theme-subtle:#52745e;}
+:root[data-theme="marine"]{--theme-accent:#286486;--theme-hover:#194c69;--theme-text:#243d4b;--theme-muted:#607681;--theme-surface:#f3f7fa;--theme-container:#e8f3fa;--theme-selected:#d4e8f4;--theme-outline:#bfd5e3;--theme-track:#c7dfea;--theme-dots:#65879b;--theme-focus:#6198b6;--theme-subtle:#466e84;}
+:root[data-theme="biotope"]{--theme-accent:#79533c;--theme-hover:#603e2b;--theme-text:#45372f;--theme-muted:#7a6a60;--theme-surface:#faf7f3;--theme-container:#f6eee7;--theme-selected:#ecddcf;--theme-outline:#decbb9;--theme-track:#e5d3c2;--theme-dots:#967c65;--theme-focus:#a5876b;--theme-subtle:#7c644f;}
+:root[data-theme="reef"]{--theme-accent:#963f69;--theme-hover:#782d52;--theme-text:#49323f;--theme-muted:#806b77;--theme-surface:#fcf5f8;--theme-container:#faebf2;--theme-selected:#f1d7e4;--theme-outline:#e4bed0;--theme-track:#eed0df;--theme-dots:#a7758e;--theme-focus:#b97e9b;--theme-subtle:#8b5670;}
+
+/* Colours transition; sizes, layout and status meanings do not change. */
+body,.device-card,.art-tag,.primary,.step,.technical,pre,footer,.section-label,
+.health-box,.health-icon,.health-box strong,.health-box p,
+.settings-dialog,.settings-header,.settings-footer,.settings-trigger,.settings-grid>label,
+.settings-grid output,.settings-grid small,.calibration,.calibration-stepper button,
+.flash-header,.flash-actions,.flash-wiring,.flash-process,.install-checklist label,
+.reset-dialog,.reset-button,.firmware-inline button,.install-entry,.footer-github {
+ transition-property:background-color,color,border-color,box-shadow,transform;
+ transition-duration:320ms;
+ transition-timing-function:ease;
+}
+.aquarium-art .aquarium-image{position:absolute;inset:0;opacity:0;transition:opacity 320ms ease;pointer-events:none}
+.aquarium-art .aquarium-image.is-active{opacity:1}
+.settings-dialog input[type=range]{background-color:var(--theme-track)}
+
+/* Appearance picker: a large stage followed by four tactile palette tiles. */
+.settings-grid>.theme-settings{display:flex;flex-direction:column;grid-column:1/-1;min-width:0;padding:20px;border-radius:28px;background:var(--theme-container);color:var(--theme-text)}
+#settings-panel .theme-settings h3{align-self:flex-start;margin:0 0 18px;font-size:14px;line-height:1.5;font-weight:600;color:var(--theme-text)}
+.theme-preview-figure{position:relative;display:flex;flex-direction:column;align-items:center;min-width:0;width:100%;padding:8px 16px 16px;border-radius:24px 24px 36px 36px;background:var(--theme-surface);overflow:hidden;transition:background-color 320ms ease}
+.theme-illustration{position:relative;width:100%;height:206px;min-width:0}
+.theme-settings-image{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:contain;opacity:0;transition:opacity 320ms ease;pointer-events:none}
+.theme-settings-image.is-active{opacity:1}
+#settings-panel #theme-name{grid-row:auto;display:block;line-height:24px;font-size:13px;font-weight:600;text-align:center;color:var(--theme-accent);padding:3px 16px;border-radius:20px;background:var(--theme-selected)}
+.theme-settings-options{width:100%;min-width:0;margin-top:16px}
+.theme-settings-controls{width:100%;margin:0}
+.theme-palettes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));width:100%;gap:8px;align-items:stretch}
+.theme-palette{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;min-width:0;min-height:100px;padding:14px 4px 12px;border:0;border-radius:22px;background:transparent;color:var(--theme-muted);transition:background-color 240ms ease,color 240ms ease,border-radius 240ms ease,transform 180ms ease}
+.theme-palette::before{content:'';display:block;width:44px;height:44px;flex:none;border-radius:50%;background:var(--palette);outline:2px solid transparent;outline-offset:3px;transition:outline-color 240ms ease}
+.theme-palette:hover{background:var(--theme-selected);transform:translateY(-2px)}
+.theme-palette[aria-pressed=true]{background:var(--theme-surface);color:var(--theme-accent);border-radius:26px 26px 12px 12px}
+.theme-palette[aria-pressed=true]::before{outline-color:var(--theme-accent)}
+.theme-palette:focus-visible{outline:3px solid var(--theme-focus);outline-offset:2px}
+.theme-palette-check{position:absolute;top:25px;left:50%;transform:translateX(-50%);width:22px;height:22px;display:grid;place-items:center;border-radius:50%;background:var(--theme-accent);color:white;opacity:0;transition:opacity 180ms ease}
+.theme-palette[aria-pressed=true] .theme-palette-check{opacity:1}
+.theme-palette-check svg{width:16px;height:16px;fill:currentColor;stroke:none}
+.theme-palette-name{font-size:11px;line-height:16px;font-weight:600;white-space:nowrap}
+#settings-panel .theme-settings-description{font-size:11px;line-height:18px;margin:16px 4px 0;color:var(--theme-muted)}
+.settings-grid{container-type:inline-size;container-name:settings-content}
+@container settings-content (max-width:400px){
+ .settings-grid>.theme-settings{padding:16px;border-radius:24px}
+ .theme-preview-figure{padding:4px 8px 14px;border-radius:20px 20px 28px 28px}
+ .theme-illustration{height:170px}
+ .theme-palettes{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ .theme-palette{display:grid;grid-template-columns:36px minmax(0,1fr);min-height:72px;gap:10px;padding:12px 8px;border-radius:20px;text-align:left}
+ .theme-palette::before{width:36px;height:36px}
+ .theme-palette[aria-pressed=true]{border-radius:22px 22px 10px 22px}
+ .theme-palette-check{top:50%;left:26px;transform:translate(-50%,-50%);width:20px;height:20px}
+}
+@supports not (container-type:inline-size){@media(max-width:480px){
+ .settings-grid>.theme-settings{padding:16px}.theme-illustration{height:170px}.theme-palettes{grid-template-columns:repeat(2,minmax(0,1fr))}
+}}
+@media(prefers-reduced-motion:reduce){html body *,html body *::before,html body *::after{transition-duration:0s!important;animation-duration:0s!important}}
+
+/* Clip the generated outer glow while keeping the tank and cable silhouette.
+   Contain/center follows object-fit:contain even in narrow preview cells. */
+[data-theme-image="biotope"],[data-theme-image="reef"]{
+ -webkit-mask-image:url("assets/themes/aquarium-cutout.svg");
+ mask-image:url("assets/themes/aquarium-cutout.svg");
+ -webkit-mask-size:contain;mask-size:contain;
+ -webkit-mask-position:center;mask-position:center;
+ -webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;
+}
+
+/* Secondary setting: compact summary, keyboard-accessible disclosure. */
+#settings-panel .theme-settings h3{align-self:stretch;width:100%;margin:0}
+.theme-summary{display:flex;align-items:center;gap:12px;width:100%;min-height:44px;padding:0;border:0;background:transparent;color:var(--theme-text);font:inherit;text-align:left;border-radius:12px}
+.theme-summary:focus-visible{outline:3px solid var(--theme-focus);outline-offset:5px}
+.theme-summary-value{display:inline-flex;align-items:center;gap:9px;margin-left:auto;color:var(--theme-accent);font-size:13px;font-weight:600}
+.theme-summary-palette{width:36px;height:36px;border-radius:50%;background:var(--palette);flex:none;opacity:1;transition:opacity 180ms ease}
+.is-expanded .theme-summary-palette{opacity:0}
+.theme-summary-arrow{width:20px;height:20px;flex:none;transform:rotate(90deg);color:var(--theme-muted);transition:transform 240ms ease}
+.is-expanded .theme-summary-arrow{transform:rotate(270deg)}
+.theme-disclosure{display:grid;grid-template-rows:0fr;width:100%;opacity:0;transition:grid-template-rows 280ms ease,opacity 180ms ease}
+.theme-disclosure-inner{min-height:0;overflow:hidden;visibility:hidden;padding-top:0;transition:padding-top 280ms ease,visibility 0s 280ms}
+.is-expanded .theme-disclosure{grid-template-rows:1fr;opacity:1}
+.is-expanded .theme-disclosure-inner{visibility:visible;padding-top:18px;transition:padding-top 280ms ease,visibility 0s}

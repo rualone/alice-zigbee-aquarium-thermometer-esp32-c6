@@ -1,8 +1,11 @@
+import {createAppearanceUI} from './appearance.js?v=device-theme-08-disconnect-2';
+import {supportsDeviceTheme} from './themes.js?v=device-theme-08-disconnect-2';
 import {installationState} from './update-result.js?v=ota-07';
 import {openDialog,closeDialog} from "./dialogs.js?v=modal-motion-2";
-import {parseFrame, duration, report, eventText, zigbeeBadge, showZigbeeBadge} from "./protocol.js?v=settings-06-fixes-2";
+import {parseFrame, duration, report, eventText, zigbeeBadge, showZigbeeBadge} from "./protocol.js?v=device-theme-08";
 const $ = id => document.getElementById(id);
 let port = null, reader = null, reading = null, poll = null, last = null, received = 0, capturedAt = null;
+const appearance=createAppearanceUI(document,{onChange:()=>updateSettingsButton(),onError:message=>toast(message)});
 let activeWriter = null;
 let latestFirmware=null;
 let settingsResetPending=false, resetSnapshotExpected=false;
@@ -15,7 +18,7 @@ let offsetCenti=0, calibrationRaw=null;
 function drawSliderTicks(field,count) {
  field.style.backgroundImage=Array.from({length:count},(_,index)=>{
   const fraction=index/(count-1);
-  return `radial-gradient(circle at calc(${fraction*100}% + ${18-fraction*36}px) 50%,#6c8c75 2px,transparent 2.5px)`;
+  return `radial-gradient(circle at calc(${fraction*100}% + ${18-fraction*36}px) 50%,var(--theme-dots) 2px,transparent 2.5px)`;
  }).join(',');
 }
 function measurementFresh() {
@@ -50,6 +53,7 @@ function updateStepSlider(key,value,load=false) {
 function formSettings() {
  const value={brightness:brightnessValue,sample_seconds:sliderValues.sample,report_seconds:sliderValues.report,delta_centi:Math.round(sliderValues.delta*100)};
  if(last?.settings && Object.hasOwn(last.settings,"offset_centi"))value.offset_centi=offsetCenti;
+ if(supportsDeviceTheme(last))value.theme=appearance?.value ?? last.settings.theme;
  return value;
 }
 function updateSettingsButton() {
@@ -59,7 +63,7 @@ function updateSettingsButton() {
   $('settings-reset').hidden=last?.settings_reset!==true;
   $('settings-reset').disabled=!!settingsPending || !port || connecting || closing || Date.now()-received>10000;
  }
- $('settings-save').disabled=!settingsDirty || !!settingsPending || !port || connecting || closing || Date.now()-received>10000;
+ $('settings-save').disabled=!!appearance?.loading || !settingsDirty || !!settingsPending || !port || connecting || closing || Date.now()-received>10000;
 }
 let connecting = false, closing = false, hiddenBefore = -1, toastTimer;
 const supported = window.isSecureContext && "serial" in navigator;
@@ -103,6 +107,7 @@ function render() {
   $("error-count").textContent=String(last.probe_errors);
  }
  const panel=$('settings-panel');
+ appearance?.sync(last,{connected:live,open:!!panel?.open,force:!settingsLoaded,pending:!!settingsPending||stale});
  const settingsAvailable=live && !!last.settings && /^(?:0\.(?:[3-9]|[1-9]\d)|[1-9]\d*\.)/.test(last.firmware);
  if(panel) {
   $('settings-open').hidden=!settingsAvailable;
@@ -222,13 +227,14 @@ if($('settings-form')) {
  $('settings-form').addEventListener('input',updateSettingsButton);
  $('settings-form').addEventListener('submit',async event=>{
   event.preventDefault();
-  if(!port || !last?.settings || !settingsDirty || settingsPending || !$('settings-form').reportValidity())return;
+  if(!port || !last?.settings || !settingsDirty || settingsPending || appearance?.loading || !$('settings-form').reportValidity())return;
   const value=formSettings();
   await persistSettings('AQ1 SETTINGS '+JSON.stringify(value),value);
  });
 }
 $('settings-reset')?.addEventListener('click',()=>{
  if(!port||settingsPending||last?.settings_reset!==true)return;
+ if($('reset-description'))$('reset-description').textContent='Яркость, интервалы измерения и отправки, порог изменения и поправка температуры вернутся к значениям прошивки по умолчанию. Несохранённые изменения будут отменены.'+(supportsDeviceTheme(last)?' Оформление вернётся к теме «Травник».':'');
  openDialog($('settings-reset-dialog'));
 });
 $('settings-reset-cancel')?.addEventListener('click',()=>closeDialog($('settings-reset-dialog')));

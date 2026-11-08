@@ -98,6 +98,7 @@ static void snapshot(void)
     cJSON_AddStringToObject(root, "device", "alice-zigbee-aquarium-thermometer");
     cJSON_AddNumberToObject(root, "protocol", 1);
     cJSON_AddBoolToObject(root, "settings_reset", true);
+    cJSON_AddBoolToObject(root, "theme_settings", true);
     cJSON_AddStringToObject(root, "type", "snapshot");
     cJSON_AddStringToObject(root, "firmware", esp_app_get_description()->version);
     cJSON_AddBoolToObject(root, "update_pending", update_boot_pending());
@@ -111,6 +112,7 @@ static void snapshot(void)
     cJSON_AddNumberToObject(settings,"report_seconds",cfg.report_seconds);
     cJSON_AddNumberToObject(settings,"delta_centi",cfg.delta_centi);
     cJSON_AddNumberToObject(settings,"offset_centi",cfg.offset_centi);
+    cJSON_AddNumberToObject(settings,"theme",cfg.theme);
     xSemaphoreTake(mutex, portMAX_DELAY);
     cJSON_AddStringToObject(root, "probe", !data.measured ? "waiting" : data.valid ? "ok" : "error");
     if (data.measured && data.valid) cJSON_AddNumberToObject(root, "temperature_c", data.temperature);
@@ -151,17 +153,25 @@ static void snapshot(void)
 }
 static void configure(const char *text) {
     cJSON *r=cJSON_Parse(text);
-    const char *names[]={"brightness","sample_seconds","report_seconds","delta_centi","offset_centi"};
-    int values[5]={0,0,0,0,settings_get().offset_centi}; bool ok=cJSON_IsObject(r) && (cJSON_GetArraySize(r)==4 || cJSON_GetArraySize(r)==5);
-    const int mins[]={0,2,5,1,-500}, maxs[]={255,3600,3600,1000,500};
-    for(int i=0;i<5;i++) {
-        cJSON *v=cJSON_GetObjectItemCaseSensitive(r,names[i]);
-        if(i==4 && !v)continue; // Older pages preserve the existing correction.
-        if(!cJSON_IsNumber(v) || !isfinite(v->valuedouble) || v->valuedouble<mins[i] ||
-            v->valuedouble>maxs[i] || floor(v->valuedouble)!=v->valuedouble) ok=false;
-        else values[i]=(int)v->valuedouble;
+    const char *names[]={"brightness","sample_seconds","report_seconds","delta_centi","offset_centi","theme"};
+    aquarium_settings_t current = settings_get();
+    int values[6]={0,0,0,0,current.offset_centi,current.theme};
+    const int mins[]={0,2,5,1,-500,0}, maxs[]={255,3600,3600,1000,500,3};
+    bool seen[6]={false}, ok=cJSON_IsObject(r);
+    cJSON *v;
+    cJSON_ArrayForEach(v,r) {
+        int index=-1;
+        for(int i=0;i<6;i++)if(v->string && strcmp(v->string,names[i])==0){index=i;break;}
+        if(index<0){ok=false;continue;}
+        if(seen[index])ok=false;
+        seen[index]=true;
+        if(!cJSON_IsNumber(v) || !isfinite(v->valuedouble) || v->valuedouble<mins[index] ||
+            v->valuedouble>maxs[index] || floor(v->valuedouble)!=v->valuedouble) ok=false;
+        else values[index]=(int)v->valuedouble;
     }
-    esp_err_t err=ok ? settings_save((aquarium_settings_t){values[0],values[1],values[2],values[3],values[4]}) : ESP_ERR_INVALID_ARG;
+    for(int i=0;i<4;i++)if(!seen[i])ok=false;
+    // Optional correction/theme retain their current values for older pages.
+    esp_err_t err=ok ? settings_save((aquarium_settings_t){values[0],values[1],values[2],values[3],values[4],values[5]}) : ESP_ERR_INVALID_ARG;
     cJSON_Delete(r);
     diagnostics_event(err==ESP_OK ? "Settings saved" : "Settings save failed");
     printf("\n@AQSET {\"ok\":%s}\n",err==ESP_OK ? "true" : "false");

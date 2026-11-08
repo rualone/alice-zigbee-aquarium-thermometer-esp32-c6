@@ -90,3 +90,18 @@ test('reset is capability gated, requires confirmation and reloads settings with
  assert.equal(snapshot.zigbee_joined,true);
  await element('disconnect').handlers.click();
 });
+
+test('0.8 forwards saved theme in ordinary settings edits; 0.7 never sends theme',async()=>{
+ snapshot.firmware='0.8';snapshot.theme_settings=true;snapshot.settings={brightness:1,sample_seconds:5,report_seconds:60,delta_centi:20,offset_centi:0,theme:3};
+ await element('connect').handlers.click();
+ element('setting-brightness').value=2;element('setting-brightness').handlers.input({target:element('setting-brightness')});
+ await element('settings-form').handlers.submit({preventDefault(){}});
+ assert.equal(sent.at(-1).theme,3);
+ await element('disconnect').handlers.click();
+ snapshot.firmware='0.7';snapshot.settings={brightness:1,sample_seconds:5,report_seconds:60,delta_centi:20,offset_centi:0,theme:3};
+ await element('connect').handlers.click();
+ element('setting-brightness').value=2;element('setting-brightness').handlers.input({target:element('setting-brightness')});
+ await element('settings-form').handlers.submit({preventDefault(){}});
+ assert.equal(Object.hasOwn(sent.at(-1),'theme'),false);
+ await element('disconnect').handlers.click();
+});

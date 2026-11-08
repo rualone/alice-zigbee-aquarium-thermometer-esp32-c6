@@ -82,3 +82,11 @@ test('Zigbee badge requires USB, firmware 0.5+ and actual diagnostic state',()=>
  for(const firmware of ['0.5','0.5.1','0.10','1.0'])assert.equal(showZigbeeBadge({...d,firmware},true),true);
  assert.equal(showZigbeeBadge({...d,zigbee:undefined},true),false);
 });
+
+test('theme capability validates its data without rejecting future theme IDs',()=>{
+ const d={...data,firmware:'0.8',theme_settings:true,settings:{theme:3}};
+ assert.ok(parseFrame(frame(d)));
+ assert.ok(parseFrame(frame({...d,settings:{theme:4}})));
+ for(const theme of [-1,0.5,'1',null,256])assert.equal(parseFrame(frame({...d,settings:{theme}})),null);
+ assert.equal(parseFrame(frame({...d,theme_settings:'yes'})),null);
+});

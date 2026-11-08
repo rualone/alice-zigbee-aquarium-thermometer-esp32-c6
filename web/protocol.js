@@ -37,6 +37,8 @@ export function parseFrame(line) {
   if(d.zigbee!==undefined && (!d.zigbee || !Object.hasOwn(ZIGBEE_STATES,d.zigbee.state) ||
       typeof d.zigbee.reason!=='string' || d.zigbee.reason.length>40 || !natural(d.zigbee.state_age_ms)))return null;
   if(d.update_pending!==undefined && typeof d.update_pending!=="boolean")return null;
+  if(d.theme_settings!==undefined && typeof d.theme_settings!=="boolean")return null;
+  if(d.theme_settings===true && (!d.settings || !Number.isInteger(d.settings.theme) || d.settings.theme<0 || d.settings.theme>255))return null;
   return d;
 }
 export function duration(ms) {
