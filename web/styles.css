@@ -1097,7 +1097,7 @@ tick positions are calculated from the thumb radius in app.js. */
 
 #install-dialog .flash-header{position:sticky;top:0;z-index:2;background:#f8faf6;border-bottom:1px solid #e4ebe0;padding:24px 32px 20px}#install-dialog .flash-actions{z-index:2}#install-dialog .flash-header h2{margin-top:0}@media(max-width:600px){#install-dialog .flash-header{padding:22px 20px 18px}}
 
-#install-dialog .install-body{padding-top:20px}#install-dialog #install-explanation{font-size:13px;line-height:1.7;margin:0;color:#65766b}
+#install-dialog .install-body{padding-top:20px}#install-dialog #install-explanation{font-size:13px;line-height:1.7;margin:0;color:#65766b;white-space:pre-line}
 
 .flash-confirm .install-checklist{gap:8px;margin:16px 0 0}.flash-confirm .flash-consent{margin-top:8px}.flash-confirm .install-checklist label,.flash-confirm .flash-consent{padding:14px 16px}
 

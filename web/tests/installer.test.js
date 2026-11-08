@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {PROJECT,appIdentity,validateUpdate,validateManifest,flashFiles,readFlashBounded,writeAndVerify,restartThermometer} from '../installer-core.js';
+import {installerErrorText,PROJECT,appIdentity,validateUpdate,validateManifest,flashFiles,readFlashBounded,writeAndVerify,restartThermometer} from '../installer-core.js';
 function app(project=PROJECT.slice(0,31),version='0.3') {
  const bytes=new Uint8Array(256);new DataView(bytes.buffer).setUint32(32,0xabcd5432,true);
  bytes.set(new TextEncoder().encode(version),48);bytes.set(new TextEncoder().encode(project),80);return bytes;
@@ -60,4 +60,12 @@ test('restart explicitly pulses reset rather than only releasing RTS',async()=>{
  await restartThermometer({async after(...args){calls.push(args);}});
  assert.deepEqual(calls,[['custom_reset',false,'D0|R1|W100|R0|W200|D0']]);
  await assert.rejects(()=>restartThermometer({async after(){throw new Error('USB lost');}}),/USB lost/);
+});
+
+test('serial noise and disconnected ports have a friendly Russian error',()=>{
+ for(const message of ['Invalid head of packet: Possible serial noise or corruption.','The device has been lost.','The port is closed.']){
+  assert.match(installerErrorText(new Error(message)),/^Связь с термометром прервалась/);
+ }
+ assert.equal(installerErrorText(new Error('Разметка памяти отличается.')),'Разметка памяти отличается.');
+ assert.equal(installerErrorText({name:'NotFoundError'}),'Выбор платы отменён.');
 });

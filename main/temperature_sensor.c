@@ -31,6 +31,8 @@
 #include "temperature_sensor.h"
 #include "diagnostics.h"
 #include "settings.h"
+#include "update_boot.h"
+#include "esp_ota_ops.h"
 #include "zigbee_health.h"
 #include "esp_timer.h"
 #include "ezbee/zdo/zdo_dev_srv_disc.h"
@@ -144,6 +146,7 @@ static void indicator_task(void *arg)
                 esp_zigbee_lock_release();
             }
         }
+        update_boot_ready(UPDATE_READY_INDICATOR);
         vTaskDelay(pdMS_TO_TICKS(20));
     }
 }
@@ -176,6 +179,7 @@ static void aquarium_service_task(void *arg)
         }
         atomic_store(&probe_ok, valid);
         diagnostics_measurement(valid, temperature, raw_temperature, settings.offset_centi, err);
+        update_boot_ready(UPDATE_READY_PROBE);
         if (valid) {
             ESP_LOGI(TAG, "Water temperature %.2f C", temperature);
             esp_app_temp_sensor_handler(temperature);
@@ -208,7 +212,7 @@ static void aquarium_service_task(void *arg)
     }
 }
 
-static esp_err_t deferred_driver_init(void)
+static esp_err_t local_driver_init(void)
 {
     static bool initialized = false;
     if (!initialized) {
@@ -274,7 +278,6 @@ static bool esp_zigbee_app_signal_handler(const ezb_app_signal_t *app_signal)
         ezb_bdb_comm_status_t status = *((ezb_bdb_comm_status_t *)ezb_app_signal_get_params(app_signal));
         if (status == EZB_BDB_STATUS_SUCCESS) {
             zigbee_health_reset(&health);
-            ESP_LOGI(TAG, "Deferred driver initialization %s", deferred_driver_init() ? "failed" : "successful");
             ESP_LOGI(TAG, "Device started up in%s factory-reset mode", ezb_bdb_is_factory_new() ? "" : " non");
             if (ezb_bdb_is_factory_new()) {
                 diagnostics_zigbee("searching", "steering");
@@ -398,6 +401,10 @@ static void esp_zigbee_stack_main_task(void *pvParameters)
 
     ESP_ERROR_CHECK(esp_zigbee_start(false));
 
+    /* Local operation must not wait for BDB network restoration or a live hub. */
+    ESP_ERROR_CHECK(local_driver_init());
+    update_boot_ready(UPDATE_READY_ZIGBEE);
+
     ESP_ERROR_CHECK(xTaskCreate(zigbee_health_task, "zigbee_health", 4096, NULL, 3, NULL) == pdPASS ? ESP_OK : ESP_ERR_NO_MEM);
     esp_zigbee_launch_mainloop();
 
@@ -408,8 +415,11 @@ static void esp_zigbee_stack_main_task(void *pvParameters)
 
 void app_main(void)
 {
+    update_boot_start();
     esp_err_t nvs_err = nvs_flash_init();
     if (nvs_err == ESP_ERR_NVS_NO_FREE_PAGES || nvs_err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        // Do not erase persistent data while deciding whether a new image is viable.
+        if (update_boot_pending()) ESP_ERROR_CHECK(esp_ota_mark_app_invalid_rollback_and_reboot());
         ESP_LOGW(TAG, "NVS requires recovery; saved pairing will be lost");
         ESP_ERROR_CHECK(nvs_flash_erase());
         nvs_err = nvs_flash_init();

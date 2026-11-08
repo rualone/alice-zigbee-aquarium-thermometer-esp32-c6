@@ -1,3 +1,4 @@
+import {installationState} from './update-result.js?v=ota-07';
 import {openDialog,closeDialog} from "./dialogs.js?v=modal-motion-2";
 import {parseFrame, duration, report, eventText, zigbeeBadge, showZigbeeBadge} from "./protocol.js?v=settings-06-fixes-2";
 const $ = id => document.getElementById(id);
@@ -316,7 +317,7 @@ async function openInstaller(mode) {
  $('install-mode').value=mode;
  $('install-mode').dispatchEvent(new Event('change'));
  $('install-title').textContent=mode==='initial'?'Установка прошивки':'Обновление прошивки';
- $('install-explanation').textContent=mode==='initial'?'Проверьте сборку при отключённом USB, затем подключите плату. Установим последнюю доступную версию.':'Обновление сохраняет настройки и Zigbee-привязку. Выберите ту же плату в окне браузера.';
+ $('install-explanation').textContent=(mode==='initial'?'Проверьте сборку при отключённом USB, затем подключите плату. Установим последнюю доступную версию.':'Обновление сохраняет настройки и Zigbee-привязку. Выберите ту же плату в окне браузера.')+'\nНе отключайте питание во время обновления — это может повредить прошивку и потребовать восстановления устройства.';
  openDialog($('install-dialog'));
 }
 $('install-open')?.addEventListener('click',()=>openInstaller('initial'));
@@ -341,6 +342,20 @@ async function finishInstallation(event){
   await connect(selected);
   if(!port||!last)throw new Error('Нет ответа термометра');
 
+  installStatus('Термометр запустился. Проверяем работу новой прошивки…');
+  const deadline=Date.now()+35000;
+  while(port && installationState(last,event.detail.version)==='waiting' && Date.now()<deadline){
+   await new Promise(resolve=>setTimeout(resolve,250));
+  }
+  const state=installationState(last,event.detail.version);
+  if(state==='rolled_back'){
+   installStatus('Новая прошивка не прошла проверку запуска. Термометр вернулся к версии '+last.firmware+'. Настройки сохранены. Можно закрыть окно и повторить обновление.');
+   return;
+  }
+  if(!port || state!=='confirmed'){
+   installStatus('Запись завершена, но проверка запуска не подтверждена. Переподключите термометр и проверьте его версию.');
+   return;
+  }
   installStatus('Прошивка установлена. Термометр подключён.');
   closeDialog($('install-dialog'));
   notice('');

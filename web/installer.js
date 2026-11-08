@@ -1,4 +1,5 @@
-import {validateManifest,validateUpdate,writeAndVerify,restartThermometer,readFlashBounded} from './installer-core.js?v=release-04';
+import {SLOTS,OTA_SECTORS,LEGACY_PARTITION_MD5,updatePlan,safeUpdate} from './ota.js?v=ota-07';
+import {installerErrorText,validateManifest,validateApp,writeAndVerify,restartThermometer,readFlashBounded} from './installer-core.js?v=ota-07-errors-1';
 const $=id=>document.getElementById(id);
 let busy=false;
 function updateInstallButton(){
@@ -45,7 +46,7 @@ async function install(){
  const initial=$('install-mode').value==='initial';
  if(initial && (!$('install-consent').checked || [...document.querySelectorAll('.assembly-check')].some(c=>!c.checked))){status('Подтвердите первую установку и удаление прежних данных.');return;}
 
- let transport,loader,selectedPort,success=false,restarted=false;
+ let transport,loader,selectedPort,success=false,restarted=false,installedVersion=null;
  busy=true;if($('install-close'))$('install-close').disabled=true;$('install-start').disabled=true;$('install-mode').disabled=true;$('install-consent').disabled=true;progress(0);
  try{
   // Picker must be called directly from the user's click, before asynchronous downloads.
@@ -63,23 +64,28 @@ async function install(){
   loader=new ESPLoader({transport,baudrate:115200,romBaudrate:115200,debugLogging:false,terminal:{clean(){},write(){},writeLine(){}}});
   await loader.main();
   if(loader.chip.CHIP_NAME!=='ESP32-C6')throw new Error('Поддерживается только ESP32-C6.');
-  if(!initial){
+  const flashSize=await loader.detectFlashSize();
+  if(!flashSize || loader.flashSizeBytes(flashSize)<2*1024*1024)throw new Error('Для этой прошивки нужна ESP32-C6 с памятью не менее 2 МБ. Запись не начиналась.');
+  if(manifest.layout!==2)throw new Error('Пакет прошивки устарел. Обновите страницу.');
+  if(initial){
+   status('Очищаем плату для первой установки…');
+   await loader.eraseFlash();
+   await writeAndVerify(loader,manifest.parts,data,progress,stage=>status(stage==='write'
+    ? 'Записываем прошивку. Не отключайте USB…' : 'Проверяем записанные данные…'));
+  }else{
    status('Проверяем совместимость и сохранность настроек…');
-
-   const partitionHash=await loader.flashMd5sum(0x8000,Math.ceil(manifest.partition.size/4)*4);
-   if(partitionHash.toLowerCase()!==manifest.partition.md5)throw new Error('Разметка памяти отличается. Обновление остановлено для сохранения данных.');
-   const partition=data.get(0x8000);
-   const app=await checkedRead(loader,0x20000,256,'описание прошивки');
-
-
-   validateUpdate(partition,data.get(0x8000),app,manifest.version);
+   const partitionHash=(await loader.flashMd5sum(0x8000,Math.ceil(manifest.partition.size/4)*4)).toLowerCase();
+   const legacy=partitionHash===LEGACY_PARTITION_MD5;
+   if(!legacy && partitionHash!==manifest.partition.md5)throw new Error('Разметка памяти отличается. Обновление остановлено для сохранения данных.');
+   const records=legacy ? [new Uint8Array(32).fill(255),new Uint8Array(32).fill(255)] :
+    [await checkedRead(loader,OTA_SECTORS[0],32,'выбор прошивки'),await checkedRead(loader,OTA_SECTORS[1],32,'резервный выбор прошивки')];
+   const plan=updatePlan(records);
+   const app=await checkedRead(loader,SLOTS[plan.active],256,'описание прошивки');
+   validateApp(app,manifest.version);
+   await safeUpdate(loader,manifest,data,plan,{legacy,read:readFlashBounded,progress,status});
   }
-  const parts=initial ? manifest.parts : [manifest.app];
-  if(initial){status('Очищаем плату для первой установки…');await loader.eraseFlash();}
-  status('Записываем прошивку. Не отключайте USB…');
-  await writeAndVerify(loader,parts,data,progress,stage=>status(stage==='write'
-   ? 'Записываем прошивку. Не отключайте USB…' : 'Проверяем записанные данные…'));
   success=true;
+  installedVersion=manifest.version;
   status('Прошивка установлена и проверена. Перезапускаем термометр…');
   try{
 
@@ -91,11 +97,11 @@ async function install(){
   status(restarted?'Прошивка '+manifest.version+' установлена. Подключаем термометр…':'Прошивка записана и проверена. Переподключите USB-кабель для запуска термометра.');
  }catch(error){
 
-  status(error.name==='NotFoundError'?'Выбор платы отменён.':error.message?.includes('Failed to open')?'Порт занят. Отключите термометр на странице «Мой аквариум» и закройте монитор VS Code.':error.message || 'Не удалось прошить плату. Проверьте USB-кабель и попробуйте режим BOOT.');
+  status(installerErrorText(error));
  }finally{
   if(transport){try{await transport.disconnect();}catch{}}
   if(success){
-   const detail={port:selectedPort,restarted};
+   const detail={port:selectedPort,restarted,version:installedVersion};
    try{
 
     document.dispatchEvent(new CustomEvent('firmware-installed',{detail}));

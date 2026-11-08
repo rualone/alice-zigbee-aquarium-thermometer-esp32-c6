@@ -36,6 +36,7 @@ export function parseFrame(line) {
   if (d.probe === "ok" && d.temperature_c === null) return null;
   if(d.zigbee!==undefined && (!d.zigbee || !Object.hasOwn(ZIGBEE_STATES,d.zigbee.state) ||
       typeof d.zigbee.reason!=='string' || d.zigbee.reason.length>40 || !natural(d.zigbee.state_age_ms)))return null;
+  if(d.update_pending!==undefined && typeof d.update_pending!=="boolean")return null;
   return d;
 }
 export function duration(ms) {

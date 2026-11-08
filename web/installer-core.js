@@ -7,6 +7,9 @@ export function appIdentity(data) {
 }
 export function validateUpdate(partition,expected,app,targetVersion) {
  if(partition.length<expected.length || !expected.every((v,i)=>partition[i]===v))throw new Error('Разметка памяти отличается. Автоматическое обновление остановлено для сохранения данных.');
+ return validateApp(app,targetVersion);
+}
+export function validateApp(app,targetVersion) {
  const identity=appIdentity(app);
  if(identity.project!==PROJECT.slice(0,31))throw new Error('На плате установлена другая прошивка. Обновление остановлено.');
  const version=s=>/^\d+\.\d+(?:\.\d+)?$/.test(s) ? s.split('.').map(Number) : null;
@@ -19,7 +22,7 @@ export function validateUpdate(partition,expected,app,targetVersion) {
  return identity;
 }
 export function validateManifest(m) {
- if(m.chip!=='ESP32-C6'||m.project!==PROJECT||m.layout!==1||!Array.isArray(m.parts)||m.parts.length!==4)throw new Error('Несовместимый пакет прошивки.');
+ if(m.chip!=='ESP32-C6'||m.project!==PROJECT||![1,2].includes(m.layout)||!Array.isArray(m.parts)||m.parts.length!==4)throw new Error('Несовместимый пакет прошивки.');
  const allowed=new Map([[0,0x8000],[0x8000,0x9000],[0xf000,0x11000],[0x20000,0x10b000]]);
  const seen=new Set();
  for(const p of m.parts) {
@@ -83,4 +86,12 @@ export async function writeAndVerify(loader,parts,data,onProgress=()=>{},onStage
 export async function restartThermometer(loader) {
  // 0.7.1 HardReset only deasserts RTS; explicitly assert reset first.
  await loader.after('custom_reset',false,'D0|R1|W100|R0|W200|D0');
+}
+
+export function installerErrorText(error) {
+ if(error?.name==='NotFoundError')return 'Выбор платы отменён.';
+ const message=error?.message||'';
+ if(/Failed to open/i.test(message))return 'USB-порт занят. Отключите термометр на странице «Мой аквариум» и закройте другие программы, использующие устройство.';
+ if(/serial noise|device.*(?:lost|disconnect)|port.*(?:closed|disconnect)|disconnected/i.test(message))return 'Связь с термометром прервалась. Переподключите USB-кабель и повторите обновление.';
+ return message||'Не удалось прошить плату. Проверьте USB-кабель и попробуйте режим BOOT.';
 }

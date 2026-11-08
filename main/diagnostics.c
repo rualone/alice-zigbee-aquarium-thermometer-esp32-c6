@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 #include "diagnostics.h"
 #include "settings.h"
+#include "update_boot.h"
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -99,6 +100,7 @@ static void snapshot(void)
     cJSON_AddBoolToObject(root, "settings_reset", true);
     cJSON_AddStringToObject(root, "type", "snapshot");
     cJSON_AddStringToObject(root, "firmware", esp_app_get_description()->version);
+    cJSON_AddBoolToObject(root, "update_pending", update_boot_pending());
     cJSON_AddNumberToObject(root, "uptime_ms", uptime_ms());
     cJSON_AddNumberToObject(root, "reset_reason", esp_reset_reason());
     cJSON_AddNumberToObject(root, "sample_interval_ms", settings_get().sample_seconds * 1000);
