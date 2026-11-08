@@ -59,4 +59,7 @@
 
 ## Основа проекта
 
-Референс — [VlasovLabTech/Zigbee-ESP32-C6-Alice](https://github.com/VlasovLabTech/Zigbee-ESP32-C6-Alice), основа Zigbee API — [Espressif ESP Zigbee SDK](https://github.com/espressif/esp-zigbee-sdk). Проект распространяется по [MIT](LICENSE); авторство и лицензии сторонних компонентов сохранены в [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+Референс — [VlasovLabTech/Zigbee-ESP32-C6-Alice](https://github.com/VlasovLabTech/Zigbee-ESP32-C6-Alice)
+Основа Zigbee API — [Espressif ESP Zigbee SDK](https://github.com/espressif/esp-zigbee-sdk). 
+Проект распространяется по [MIT](LICENSE)
+Авторство и лицензии сторонних компонентов сохранены в [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
